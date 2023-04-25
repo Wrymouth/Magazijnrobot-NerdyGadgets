@@ -4,6 +4,8 @@
 #define directionPinB 13
 #define brakePinA 9
 #define brakePinB 8
+#define encoderA 1
+#define encoderB 2
 
 // int pos = 0;
 const int speed = 50;
@@ -12,18 +14,32 @@ const int speed = 50;
 int directionA;
 int directionB;
 
+// variables for reading encoderA
+int encoderAState;
+int aLastState;
+int counterA;
+
+// variables for reading encoderB
+int encoderBState;
+int bLastState;
+int counterB;
+
 void setup() {
   Serial.begin(9600);
 
-  //Setup Motor A
+  TCCR2B = TCCR2B & B11111000 | B00000111; // for PWM frequency of 30.64 Hz
+
+  //Setup Motor A horizontal
   pinMode(directionPinA, OUTPUT);
   pinMode(brakePinA, OUTPUT); 
   pinMode(speedPinA, OUTPUT);
+  pinMode(encoderA, INPUT);
 
-  //Setup Motor B
+  //Setup Motor B vertical
   pinMode(directionPinB, OUTPUT);
   pinMode(brakePinB, OUTPUT);
   pinMode(speedPinB, OUTPUT);
+  pinMode(encoderB, INPUT);
 
   // attachInterrupt(digitalPinToInterrupt(ENCA),readEncoder,RISING);
 }
@@ -33,6 +49,8 @@ void loop() {
 // if joystick pressed up, call: setMotorA(directionA); directionA being 0 for not moving, setMotorB(directionB); directionB being 1 for up.
 // etc.
 
+readEncoderA(directionA);
+readEncoderB(directionB);
 setMotorA(directionA);
 setMotorB(directionB);
 }
@@ -77,12 +95,32 @@ void setMotorB(int dir){
   }
 }
 
-// void readEncoder(){
-//   int b = digitalRead(ENCB);
-//   if(b > 0){
-//     pos++;
-//   }
-//   else{
-//     pos--;
-//   }
-// }
+void readEncoderA(int dir){
+  encoderAState = digitalRead(encoderA);
+  
+  if (encoderAState != aLastState){      
+       if (dir == 1){
+       counterA ++;  
+       }
+       else if (dir == -1){
+       counterA --; 
+      }
+   }
+  aLastState = encoderAState;
+  Serial.println("counterA: " + counterA);
+}
+
+void readEncoderB(int dir){
+  encoderBState = digitalRead(encoderB);
+  
+  if (encoderBState != bLastState){      
+       if (dir == 1){
+       counterB ++;  
+       }
+       else if (dir == -1){
+       counterB --; 
+      }
+   }
+  bLastState = encoderBState;
+  Serial.println("counterB: " + counterB);
+}
