@@ -29,13 +29,13 @@ void setup() {
 
   TCCR2B = TCCR2B & B11111000 | B00000111; // for PWM frequency of 30.64 Hz
 
-  //Setup Motor A horizontal
+  //Setup Motor A vertical
   pinMode(directionPinA, OUTPUT);
   pinMode(brakePinA, OUTPUT); 
   pinMode(speedPinA, OUTPUT);
   pinMode(encoderA, INPUT);
 
-  //Setup Motor B vertical
+  //Setup Motor B horizontal
   pinMode(directionPinB, OUTPUT);
   pinMode(brakePinB, OUTPUT);
   pinMode(speedPinB, OUTPUT);
@@ -46,7 +46,7 @@ void setup() {
 
 void loop() {
 // read joystick input
-// if joystick pressed up, call: setMotorA(directionA); directionA being 0 for not moving, setMotorB(directionB); directionB being 1 for up.
+// if joystick pressed up, call: setMotorA(directionA); directionA being 1 for up, setMotorB(directionB); directionB being 0 for standing still.
 // etc.
 
 readEncoderA(directionA);
@@ -56,7 +56,7 @@ setMotorB(directionB);
 }
 
 // based on direction order motorA to move at predetermined speed in given direction, also disables brake if direction unless no direction is given
-// motorA is for horizontal movement
+// motorA is for vertical movement
 void setMotorA(int dir){
   if(dir == 1){
     digitalWrite(directionPinA, HIGH);
@@ -76,7 +76,7 @@ void setMotorA(int dir){
 }
 
 // functions the same as setMotorA but for motorB
-// motorB is for vertical movement
+// motorB is for horizontal movement
 void setMotorB(int dir){
   if(dir == 1){
     digitalWrite(directionPinB, HIGH);
