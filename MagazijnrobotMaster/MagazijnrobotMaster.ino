@@ -4,8 +4,16 @@
 #define directionPinB 13
 #define brakePinA 9
 #define brakePinB 8
-#define encoderA 1
-#define encoderB 2
+#define encoderA 7
+#define encoderB 5
+#define SwPin 4
+#include <Wire.h>
+
+const int pickupDistance = 0;
+
+// joystick
+xDirection = analogRead(VrxPin);
+yDirection = analogRead(VryPin);
 
 // int pos = 0;
 const int speed = 50;
@@ -17,12 +25,20 @@ int directionB;
 // variables for reading encoderA
 int encoderAState;
 int aLastState;
-int counterA;
+int counterA = 0;
 
 // variables for reading encoderB
 int encoderBState;
 int bLastState;
-int counterB;
+int counterB = 0;
+
+//for connection between arduinos
+bool x = true;
+bool y = false;
+
+int a = 0;
+
+int pickupDistance = 0;
 
 void setup() {
   Serial.begin(9600);
@@ -32,14 +48,17 @@ void setup() {
   //Setup Motor A vertical
   pinMode(directionPinA, OUTPUT);
   pinMode(brakePinA, OUTPUT); 
-  pinMode(speedPinA, OUTPUT);
   pinMode(encoderA, INPUT);
 
   //Setup Motor B horizontal
   pinMode(directionPinB, OUTPUT);
   pinMode(brakePinB, OUTPUT);
-  pinMode(speedPinB, OUTPUT);
   pinMode(encoderB, INPUT);
+
+    // Start the I2C Bus as Slave on address 9
+  Wire.begin(8); 
+  // Attach a function to trigger when something is received.
+  Wire.onReceive(receiveEvent);
 
   // attachInterrupt(digitalPinToInterrupt(ENCA),readEncoder,RISING);
 }
@@ -48,11 +67,73 @@ void loop() {
 // read joystick input
 // if joystick pressed up, call: setMotorA(directionA); directionA being 1 for up, setMotorB(directionB); directionB being 0 for standing still.
 // etc.
+//if joystick is untouched motorA + B stop moving   
+if (xDirection == 509 && yDirection == 528 ){
+     setMotorA(0);
+     setMotorB(0);
+     readEncoderA(0);
+     readEncoderB(0);
+     //Serial.println("STOP");
+   }
+//if joystick is pointed left motorA goes left
+if (xDirection < 200) {
+      //Serial.println("Left");
+      setMotorA(-1);
+      readEncoderA(-1);
+      readEncoderB(directionB);
+   } 
+//if joystick is pointed right motorA goes right  
+   else if (xDirection > 700) {
+      //Serial.println("Right");
+      setMotorA(1);
+      readEncoderA(1);
+     
+   }
+//if joystick is pointed down motorB goes down
+if (yDirection < 200) {
+       //Serial.println("Down");
+       setMotorB(-1);
+       readEncoderB(-1);
+   } 
+//if joystick is pointed up motorB goes up
+   else if (yDirection > 700) {
+       //Serial.println("Up");
+       setMotorB(1);
+       readEncoderB(1);
+   }
 
-readEncoderA(directionA);
-readEncoderB(directionB);
-setMotorA(directionA);
-setMotorB(directionB);
+   if (y){
+     if (a == 0){
+       counterStart = counterB;
+       a++;
+     }
+     setMotorB(1);
+     readEncoderB(1);
+     if(counterB - counterStart >= pickupDistance){
+       setMotor(0);
+       wire.beginTransmission(9);
+       wire.write(false);
+       wire.endTransmission();
+     }
+   }
+
+  // transmission between arduinos
+  readButton();
+}
+
+void receiveEvent(int bytes) {
+  y = Wire.read();    // read one character from the I2C
+}
+
+void readButton(){
+  switchState = digitalRead(SwPin);
+  if (!switchState) {
+       Serial.println("Switch pressed");
+       Wire.beginTransmission(9); // transmit to device #9
+      Wire.write(x);              // sends x 
+      Wire.endTransmission();    // stop transmitting
+      a = 0;
+   }
 }
 
 // based on direction order motorA to move at predetermined speed in given direction, also disables brake if direction unless no direction is given
@@ -70,7 +151,6 @@ void setMotorA(int dir){
   }
   else{
     digitalWrite(brakePinA, HIGH);
-    digitalWrite(speedPinA, LOW);
     analogWrite(speedPinA, 0);
   }
 }
@@ -90,7 +170,6 @@ void setMotorB(int dir){
   }
   else{
     digitalWrite(brakePinB, HIGH);
-    digitalWrite(speedPinB, LOW);
     analogWrite(speedPinB, 0);
   }
 }
