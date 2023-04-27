@@ -11,6 +11,8 @@ const int end = 0;
 bool x = false;
 bool y = true;
 
+int direction = 0;
+
 // speed of motor
 int speed = 50;
 
@@ -34,6 +36,7 @@ void setup() {
   // Attach a function to trigger when something is received.
   Wire.onReceive(receiveEvent);
 
+  // interrupts evrytime encoder A/B pulses and executes readEncoder functions accordingly. this makes sure no pulse is missed
   attachInterrupt(digitalPinToInterrupt(encoder),readEncoder,RISING);
 }
 
@@ -43,14 +46,14 @@ void receiveEvent(int bytes) {
 }
 
 // reads encoder and adds/ subtracts 1, based on direction, from counter everytime encoder pulses
-void readEncoder(int dir){
+void readEncoder(){
   encoderState = digitalRead(encoder);
   
   if (encoderState != LastState){      
-       if (dir == 1){
+       if (direction == 1){
        counter ++;  
        }
-       else if (dir == -1){
+       else if (direction == -1){
        counter --; 
       }
    }
@@ -60,16 +63,17 @@ void readEncoder(int dir){
 
 void loop() {
   // put your main code here, to run repeatedly:
-  readEncoder();
 
 // moves z motor forward if joystick button is pressed
   if (x){
+    direction = 1;
     digitalWrite(brakePin, LOW);
     digitalWrite(directionPin, HIGH);
     analogWrite(speedPin, speed);
 
 // if end is reached stop motor and send for the other arduino to move up a bit
     if (counter >= end){
+      direction = 0;
       digitalWrite(brakePin, HIGH);
       analogWrite(speedPin, 0);
       Wire.beginTransmission(8); // transmit to device #9
@@ -81,10 +85,12 @@ void loop() {
 // if y axes has stopped moving to pickup an item, move motor backwards until z motor is back at starting position
   if (!x){
     if (counter <= 0){
+      direction = 0;
       digitalWrite(brakePin, HIGH);
       analogWrite(speedPin, 0);
       } 
       else{
+      direction = -1;
       digitalWrite(brakePin, LOW);
       digitalWrite(directionPin, LOW);
       analogWrite(speedPin, speed);

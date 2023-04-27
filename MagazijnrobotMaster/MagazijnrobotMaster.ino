@@ -23,8 +23,8 @@ yDirection = analogRead(VryPin);
 const int speed = 50;
 
 // change value based on joystick or HMI input
-int directionA;
-int directionB;
+int directionA = 0;
+int directionB = 0;
 
 // variables for reading encoderA
 int encoderAState;
@@ -65,6 +65,7 @@ void setup() {
   // Attach a function to trigger when something is received.
   Wire.onReceive(receiveEvent);
 
+  // interrupts evrytime encoder A/B pulses and executes readEncoder functions accordingly. this makes sure no pulse is missed
   attachInterrupt(digitalPinToInterrupt(encoderA),readEncoderA,RISING);
   attachInterrupt(digitalPinToInterrupt(encoderB),readEncoderB,RISING);
 }
@@ -76,41 +77,40 @@ void loop() {
 
 if (!emergency){
   readButton();
-
-//if joystick is untouched motorA + B stop moving   
-if (xDirection == 509 && yDirection == 528 ){
-     setMotorA(0);
-     setMotorB(0);
-     readEncoderA(0);
-     readEncoderB(0);
+  setMotorA(directionA);
+  setMotorB(directionB);
+  if (!y){
+  //if joystick is untouched motorA + B stop moving   
+    if (xDirection == 509 && yDirection == 528 ){
+     directionA = 0;
+     directionB = 0;
      //Serial.println("STOP");
    }
-//if joystick is pointed left motorA goes left
-if (xDirection < 200) {
+  //if joystick is pointed left motorA goes left
+    if (xDirection < 200) {
       //Serial.println("Left");
-      setMotorA(-1);
-      readEncoderA(-1);
-      readEncoderB(directionB);
+      directionA = -1;
+      directionB = 0;
    } 
-//if joystick is pointed right motorA goes right  
-   else if (xDirection > 700) {
+  //if joystick is pointed right motorA goes right  
+      else if (xDirection > 700) {
       //Serial.println("Right");
-      setMotorA(1);
-      readEncoderA(1);
-     
+      directionA = 1;
+      directionB = 0;
    }
-//if joystick is pointed down motorB goes down
-if (yDirection < 200) {
+  //if joystick is pointed down motorB goes down
+    if (yDirection < 200) {
        //Serial.println("Down");
-       setMotorB(-1);
-       readEncoderB(-1);
+       directionA = 0;
+       directionB = -1;
    } 
-//if joystick is pointed up motorB goes up
-   else if (yDirection > 700) {
+  //if joystick is pointed up motorB goes up
+      else if (yDirection > 700) {
        //Serial.println("Up");
-       setMotorB(1);
-       readEncoderB(1);
+       directionA = 0;
+       directionB = 1;
    }
+  }
 
    // if recieved data in variable y is true, determines start position of motor y and moves motor y up until pickupDistance is achieved.
    // then motor stops and sends for the other arduino to begin retracting motor z
@@ -119,10 +119,11 @@ if (yDirection < 200) {
        counterStart = counterB;
        a++;
      }
-     setMotorB(1);
-     readEncoderB(1);
+     directionA = 0;
+     directionB = 1;
      if(counterB - counterStart >= pickupDistance){
-       setMotor(0);
+       directionA = 0;
+       directionB = 0;
        wire.beginTransmission(9);
        wire.write(false);
        wire.endTransmission();
@@ -130,7 +131,6 @@ if (yDirection < 200) {
      }
    }
 }
-
 }
 
 // code to be executed on wire.onRecieve event
@@ -190,14 +190,14 @@ void setMotorB(int dir){
 }
 
 // reads encoder from motor A and adds/ subtracts 1, based on direction, from counter everytime encoder pulses
-void readEncoderA(int dir){
+void readEncoderA(){
   encoderAState = digitalRead(encoderA);
   
   if (encoderAState != aLastState){      
-       if (dir == 1){
+       if (directionA == 1){
        counterA ++;  
        }
-       else if (dir == -1){
+       else if (directionA == -1){
        counterA --; 
       }
    }
@@ -206,14 +206,14 @@ void readEncoderA(int dir){
 }
 
 // reads encoder from motor B and adds/ subtracts 1, based on direction, from counter everytime encoder pulses
-void readEncoderB(int dir){
+void readEncoderB(){
   encoderBState = digitalRead(encoderB);
   
   if (encoderBState != bLastState){      
-       if (dir == 1){
+       if (directionB == 1){
        counterB ++;  
        }
-       else if (dir == -1){
+       else if (directionB == -1){
        counterB --; 
       }
    }
