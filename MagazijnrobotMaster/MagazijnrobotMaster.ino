@@ -9,9 +9,13 @@
 #define SwPin 4
 #include <Wire.h>
 
+// bool that changes to true when emergency button is pressed
+bool emergency = false;
+
+// distance motor y needs to move up to pickup an item
 const int pickupDistance = 0;
 
-// joystick
+// reads y and x direction on the joystick and save it in variable
 xDirection = analogRead(VrxPin);
 yDirection = analogRead(VryPin);
 
@@ -36,13 +40,14 @@ int counterB = 0;
 bool x = true;
 bool y = false;
 
+// used to get startposition of y motor during item pickup
 int a = 0;
 
-int pickupDistance = 0;
-
 void setup() {
+  // starts serial communication
   Serial.begin(9600);
 
+  // writes PWM frequency to be used by motors
   TCCR2B = TCCR2B & B11111000 | B00000111; // for PWM frequency of 30.64 Hz
 
   //Setup Motor A vertical
@@ -55,18 +60,23 @@ void setup() {
   pinMode(brakePinB, OUTPUT);
   pinMode(encoderB, INPUT);
 
-    // Start the I2C Bus as Slave on address 9
+    // Starts connection to other arduino and recieves data on address 8
   Wire.begin(8); 
   // Attach a function to trigger when something is received.
   Wire.onReceive(receiveEvent);
 
-  // attachInterrupt(digitalPinToInterrupt(ENCA),readEncoder,RISING);
+  attachInterrupt(digitalPinToInterrupt(encoderA),readEncoderA,RISING);
+  attachInterrupt(digitalPinToInterrupt(encoderB),readEncoderB,RISING);
 }
 
 void loop() {
 // read joystick input
 // if joystick pressed up, call: setMotorA(directionA); directionA being 1 for up, setMotorB(directionB); directionB being 0 for standing still.
 // etc.
+
+if (!emergency){
+  readButton();
+
 //if joystick is untouched motorA + B stop moving   
 if (xDirection == 509 && yDirection == 528 ){
      setMotorA(0);
@@ -102,6 +112,8 @@ if (yDirection < 200) {
        readEncoderB(1);
    }
 
+   // if recieved data in variable y is true, determines start position of motor y and moves motor y up until pickupDistance is achieved.
+   // then motor stops and sends for the other arduino to begin retracting motor z
    if (y){
      if (a == 0){
        counterStart = counterB;
@@ -114,17 +126,20 @@ if (yDirection < 200) {
        wire.beginTransmission(9);
        wire.write(false);
        wire.endTransmission();
+       y = false;
      }
    }
-
-  // transmission between arduinos
-  readButton();
 }
 
+}
+
+// code to be executed on wire.onRecieve event
 void receiveEvent(int bytes) {
   y = Wire.read();    // read one character from the I2C
 }
 
+// checks if joystick button is pressed, if true sends for the other arduino to begin pickup process
+// set a to 0 to be able to determine starting position of motor y
 void readButton(){
   switchState = digitalRead(SwPin);
   if (!switchState) {
@@ -174,6 +189,7 @@ void setMotorB(int dir){
   }
 }
 
+// reads encoder from motor A and adds/ subtracts 1, based on direction, from counter everytime encoder pulses
 void readEncoderA(int dir){
   encoderAState = digitalRead(encoderA);
   
@@ -189,6 +205,7 @@ void readEncoderA(int dir){
   Serial.println("counterA: " + counterA);
 }
 
+// reads encoder from motor B and adds/ subtracts 1, based on direction, from counter everytime encoder pulses
 void readEncoderB(int dir){
   encoderBState = digitalRead(encoderB);
   
@@ -202,4 +219,9 @@ void readEncoderB(int dir){
    }
   bLastState = encoderBState;
   Serial.println("counterB: " + counterB);
+}
+
+// if emergency button is pressed set emegerency to true, code in loop won't be executed as long as emergency is true
+void emergencyBrake(){
+  emergency = true;
 }
