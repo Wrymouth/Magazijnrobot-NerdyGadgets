@@ -1,40 +1,47 @@
-
+#include <Wire.h>
+#include <ezButton.h>
+// Motor pins
 #define speedPinA 3
 #define speedPinB 11
 #define directionPinA 12
 #define directionPinB 13
 #define brakePinA 9
 #define brakePinB 8
-#define encoderA 1
-#define encoderB 2
+#define encoderA 7
+#define encoderB 5
+//Joystick pins
+#define VrxPin A3
+#define VryPin A2
+#define SwPin 4
 
+ezButton button(SwPin);
 
 // int pos = 0;
-const int speed = 50;
+const int speed = 150;
 
 // change value based on joystick or HMI input
 int directionA;
 int directionB;
-<<<<<<< HEAD
-const int swPin = 1;
-const int VrxPin = A1;
-const int VryPin = A0;
 
+// variables for direction joystick
 int xDirection = 0;
 int yDirection = 0;
-int switchState = 1;
-
+bool x = true;
+bool y;
 
 // variables for reading encoderA
+int aLastState = 0;
 int encoderAState;
-int aLastState;
-int counterA;
+int counterA = 0;
 
 // variables for reading encoderB
-int encoderBState;
 int bLastState;
-int counterB;
->>>>>>> origin/motors
+int encoderBState;
+int counterB = 0;
+int counter;
+bool prevA = 1, prevB = 1;
+
+
 
 void setup() {
   Serial.begin(9600);
@@ -43,54 +50,78 @@ void setup() {
    //Setup Motor A vertical
   pinMode(directionPinA, OUTPUT);
   pinMode(brakePinA, OUTPUT); 
-  pinMode(speedPinA, OUTPUT);
   pinMode(encoderA, INPUT);
 
   //Setup Motor B horizontal
   pinMode(directionPinB, OUTPUT);
   pinMode(brakePinB, OUTPUT);
-  pinMode(speedPinB, OUTPUT);
   pinMode(encoderB, INPUT);
 
-  //Setup joystick
-  pinMode(swPin, INPUT);
-  digitalWrite(swPin, HIGH);
+  pinMode(SwPin, INPUT);
+  digitalWrite(SwPin, HIGH);
   
-  TCCR2B = TCCR2B & B11111000 | B00000111; // for PWM frequency of 30.64 Hz
+TCCR2B = TCCR2B & B11111000 | B00000110; // for PWM frequency of 122.55 Hz
 
 
- 
-
-
-  // attachInterrupt(digitalPinToInterrupt(ENCA),readEncoder,RISING);
+   attachInterrupt(digitalPinToInterrupt(ENCA),readEncoder,RISING);
 }
 
 void loop() {
 
-xDirection = analogRead(VryPin);
-yDirection = analogRead(VrxPin);
-// if joystick pressed up, call: setMotorA(directionA); directionA being 0 for not moving, setMotorB(directionB); directionB being 1 for up.
-// etc.
-if (xDirection < 480) {
-      Serial.println("Left");
-      setMotorA(1);
-   } else if (xDirection > 520) {
-      Serial.println("Right");
-      setMotorA(-1);
-   }
- 
-   if (yDirection < 480) {
-       Serial.println("Down");
-       setMotorB(-1);
-   } else if (yDirection > 520) {
-       Serial.println("Up");
-       setMotorB(1);
-   }
 
-readEncoderA(directionA);
-readEncoderB(directionB);
-setMotorA(directionA);
-setMotorB(directionB);
+xDirection = analogRead(VrxPin);
+yDirection = analogRead(VryPin);
+
+ // print data to Serial Monitor on Arduino IDE
+  //Serial.print("x = ");
+  //Serial.print(xDirection);
+  //Serial.print(", y = ");
+  //Serial.println(yDirection);
+   //Serial.print("Switch:  ");
+  //Serial.println(digitalRead(SwPin));
+  //delay(200);
+
+//if joystick is untouched motorA + B stop moving   
+if (xDirection == 509 && yDirection == 528 ){
+     setMotorA(0);
+     setMotorB(0);
+     readEncoderA(0);
+     readEncoderB(0);
+     //Serial.println("STOP");
+   }
+//if joystick is pointed left motorA goes left
+if (xDirection < 200) {
+      //Serial.println("Left");
+      setMotorA(-1);
+      readEncoderA(-1);
+      
+   } 
+//if joystick is pointed right motorA goes right  
+   else if (xDirection > 700) {
+      //Serial.println("Right");
+      setMotorA(1);
+      readEncoderA(1);
+     
+   }
+//if joystick is pointed down motorB goes down
+if (yDirection < 200) {
+       //Serial.println("Down");
+       setMotorB(-1);
+       readEncoderB(-1);
+       
+   } 
+//if joystick is pointed up motorB goes up
+   else if (yDirection > 700 || y == true) {
+       //Serial.println("Up");
+       setMotorB(1);
+       readEncoderB(1);
+       
+   } 
+
+
+
+readButton();
+
 
 
 }
@@ -110,7 +141,6 @@ void setMotorA(int dir){
   }
   else{
     digitalWrite(brakePinA, HIGH);
-    digitalWrite(speedPinA, LOW);
     analogWrite(speedPinA, 0);
   }
 }
@@ -130,39 +160,60 @@ void setMotorB(int dir){
   }
   else{
     digitalWrite(brakePinB, HIGH);
-    digitalWrite(speedPinB, LOW);
     analogWrite(speedPinB, 0);
   }
 }
 
 void readEncoderA(int dir){
   encoderAState = digitalRead(encoderA);
-  
-  if (encoderAState != aLastState){      
+  bool A = digitalRead(encoderA);
+ 
+  if (encoderAState > aLastState){      
+    
        if (dir == 1){
-       counterA ++;  
+       counterA++;
+         
        }
        else if (dir == -1){
-       counterA --; 
+       counterA--; 
       }
    }
-  aLastState = encoderAState;
-  Serial.println("counterA: " + counterA);
+  //Serial.print("CounterA: ");
+  //Serial.println(counterA);
+ aLastState = encoderAState;
+ prevA = A;
+prevB = B;
+ 
 }
 
 void readEncoderB(int dir){
   encoderBState = digitalRead(encoderB);
-  
-  if (encoderBState != bLastState){      
-       if (dir == 1){
-       counterB ++;  
+  bool B = digitalRead(encoderB);
+  if (encoderBState > bLastState){      
+       if (dir == 1){ 
+       counterB++;
+     
        }
        else if (dir == -1){
-       counterB --; 
+       counterB--; 
       }
+
    }
-  bLastState = encoderBState;
-  Serial.println("counterB: " + counterB);
+
+  //Serial.print("CounterB: ");
+  //Serial.println(counterB);
+   bLastState = encoderBState; 
 }
 
 
+void readButton(){
+  int buttonState = digitalRead(SwPin);
+  if (buttonState == 0) {
+       Serial.println("Switch pressed");
+       Wire.beginTransmission(9); // transmit to device #9
+      Wire.write(x);              // sends x 
+      Wire.endTransmission();    // stop transmitting
+      buttonState == 1;
+      
+   } 
+}
