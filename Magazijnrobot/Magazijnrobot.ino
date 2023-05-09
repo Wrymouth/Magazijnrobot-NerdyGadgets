@@ -63,7 +63,7 @@ void setup() {
 TCCR2B = TCCR2B & B11111000 | B00000110; // for PWM frequency of 122.55 Hz
 
 
-   attachInterrupt(digitalPinToInterrupt(ENCA),readEncoder,RISING);
+   //attachInterrupt(digitalPinToInterrupt(ENCA),readEncoder,RISING);
 }
 
 void loop() {
@@ -119,7 +119,7 @@ if (yDirection < 200) {
    } 
 
 
-
+Serial.println()
 readButton();
 
 
