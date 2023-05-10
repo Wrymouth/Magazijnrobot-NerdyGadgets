@@ -4,18 +4,19 @@
 #define directionPinB 13
 #define brakePinA 9
 #define brakePinB 8
-#define encoderA 7
+#define encoderA 2
 #define encoderB 5
 #define VrxPin A3
 #define VryPin A2
 #define SwPin 4
 #include <Wire.h>
+#include <PinChangeInterrupt.h>
 
 // bool that changes to true when emergency button is pressed
 bool emergency = false;
 
 // distance motor y needs to move up to pickup an item
-const int pickupDistance = -10;
+const int pickupDistance = -30;
 
 // reads y and x direction on the joystick and save it in variable
 int xDirection = analogRead(VrxPin);
@@ -74,10 +75,10 @@ void setup() {
   Wire.begin(8); 
   // Attach a function to trigger when something is received.
   Wire.onReceive(receiveEvent);
-
+  
   // interrupts evrytime encoder A/B pulses and executes readEncoder functions accordingly. this makes sure no pulse is missed
-  attachInterrupt(digitalPinToInterrupt(encoderA),readEncoderA,RISING);
-  attachInterrupt(digitalPinToInterrupt(encoderB),readEncoderB,RISING);
+attachInterrupt(digitalPinToInterrupt(encoderA), readEncoderA, CHANGE);
+attachPCINT(digitalPinToPCINT(encoderB), readEncoderB, RISING);
 }
 
 void loop() {
@@ -145,18 +146,21 @@ if (!emergency){
      }
      directionA = -1;
      directionB = 0;
-     if(counterA - counterStart < pickupDistance){
      
+
+     if(counterA - counterStart < pickupDistance){
+     //Serial.println("check");
        directionA = 0;
        directionB = 0;
        digitalWrite(brakePinA, HIGH);
        digitalWrite(brakePinB, HIGH);
        Wire.beginTransmission(9);
-       Wire.write(false);
+       Wire.write(y);
        Wire.endTransmission();
        
      }
    }
+   
 }
 }
 
@@ -175,7 +179,7 @@ void readButton(){
     
    
     if (buttonState == LOW && lastButtonState == HIGH) {
-      Serial.println("check");
+      
       lastTimeButtonStateChanged = millis();
       
      
@@ -238,8 +242,9 @@ void readEncoderA(){
 
    }
   aLastState = encoderAState;
-  //Serial.print("CounterA: ");
-  //Serial.println(counterA);
+  Serial.print("CounterA: ");
+  Serial.println(counterA);
+  
 }
 
 // reads encoder from motor B and adds/ subtracts 1, based on direction, from counter everytime encoder pulses
@@ -250,11 +255,24 @@ void readEncoderB(){
       counterB += directionB;
    }
   bLastState = encoderBState;
-  //Serial.print("CounterB: ");
-  //Serial.println(counterB);
+  Serial.println("---");
+  Serial.print("CounterB: ");
+  Serial.println(counterB);
+ 
 }
 
 // if emergency button is pressed set emegerency to true, code in loop won't be executed as long as emergency is true
 void emergencyBrake(){
   emergency = true;
 }
+
+// void pciSetup(byte pin)
+// {
+//     *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin));  // enable pin
+//     PCIFR  |= bit (digitalPinToPCICRbit(pin)); // clear any outstanding interrupt
+//     PCICR  |= bit (digitalPinToPCICRbit(pin)); // enable interrupt for the group
+// }
+// ISR (PCINT2_vect) // handle pin change interrupt for D0 to D7 here
+//  {
+//      digitalWrite(13,digitalRead(7) and digitalRead(5));
+//  }  

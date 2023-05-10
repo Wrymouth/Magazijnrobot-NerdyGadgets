@@ -5,7 +5,7 @@
 #include <Wire.h>
 
 // the end position of the motor on the z axes
-const int end = 500;
+const int end = 1700;
 
 // used for communication between arduinos
 bool x = false;
@@ -77,7 +77,7 @@ readEncoder();
       digitalWrite(brakePin, HIGH);
       analogWrite(speedPin, 0);
       Wire.beginTransmission(8); // transmit to device #9
-      Wire.write(false);              // sends y
+      Wire.write(y);              // sends y
       Wire.endTransmission();    // stop transmitting
     }
   }
