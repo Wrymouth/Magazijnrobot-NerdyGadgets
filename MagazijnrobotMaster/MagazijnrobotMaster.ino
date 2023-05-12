@@ -16,11 +16,12 @@
 bool emergency = false;
 
 // distance motor y needs to move up to pickup an item
-const int pickupDistance = -30;
+const int pickupDistance = -50;
 
 // reads y and x direction on the joystick and save it in variable
 int xDirection = analogRead(VrxPin);
 int yDirection = analogRead(VryPin);
+bool readJoystick = true;
 
 // button
 byte lastButtonState = LOW;
@@ -78,7 +79,7 @@ void setup() {
   
   // interrupts evrytime encoder A/B pulses and executes readEncoder functions accordingly. this makes sure no pulse is missed
 attachInterrupt(digitalPinToInterrupt(encoderA), readEncoderA, CHANGE);
-attachPCINT(digitalPinToPCINT(encoderB), readEncoderB, RISING);
+attachPCINT(digitalPinToPCINT(encoderB), readEncoderB, CHANGE);
 }
 
 void loop() {
@@ -87,21 +88,20 @@ void loop() {
 // etc.
  // print data to Serial Monitor on Arduino IDE
 
-xDirection = analogRead(VrxPin);
-yDirection = analogRead(VryPin);
-
-
 //Serial.println(directionA);
   //Serial.print("x = ");
   //Serial.print(xDirection);
   //Serial.print(", y = ");
   //Serial.println(yDirection);
   //delay(200);
-if (!emergency){
-  
+
+if (!emergency && readJoystick){
+
   readButton();
   setMotorA(directionA);
   setMotorB(directionB);
+  xDirection = analogRead(VrxPin);
+  yDirection = analogRead(VryPin);
   readEncoderA();
   readEncoderB();
   if (!y){
@@ -134,20 +134,24 @@ if (!emergency){
        directionB = 1;
    }
   }
-
+    Serial.print("CounterY: ");
+    Serial.println(counterA);
+    Serial.println("---");
+    Serial.print("CounterX: ");
+    Serial.println(counterB);
    // if recieved data in variable y is true, determines start position of motor y and moves motor y up until pickupDistance is achieved.
    // then motor stops and sends for the other arduino to begin retracting motor z
    if (y){
-     //Serial.println("kom op zeg");
+     
      if (a == 0){
       counterStart = counterA;
       
          a++;
      }
+      
      directionA = -1;
      directionB = 0;
      
-
      if(counterA - counterStart < pickupDistance){
      //Serial.println("check");
        directionA = 0;
@@ -155,8 +159,11 @@ if (!emergency){
        digitalWrite(brakePinA, HIGH);
        digitalWrite(brakePinB, HIGH);
        Wire.beginTransmission(9);
-       Wire.write(y);
+       Wire.write(false);
        Wire.endTransmission();
+       y = false;
+       a--;
+       
        
      }
    }
@@ -166,8 +173,11 @@ if (!emergency){
 
 // code to be executed on wire.onRecieve event
 void receiveEvent(int bytes) {
-  y = Wire.read();    // read one character from the I2C
-
+      // read one character from the I2C
+   y = Wire.read();
+  
+   readJoystick = true;
+  
 }
 
 // checks if joystick button is pressed, if true sends for the other arduino to begin pickup process
@@ -183,11 +193,12 @@ void readButton(){
       lastTimeButtonStateChanged = millis();
       
      
-         Serial.println("Switch pressed");
-       Wire.beginTransmission(9); // transmit to device #9
-      Wire.write(x);              // sends x 
+      Serial.println("Switch pressed");
+      readJoystick = false;
+      Wire.beginTransmission(9); // transmit to device #9
+      Wire.write(true);              // sends x 
       Wire.endTransmission();    // stop transmitting
-  
+      
       
     }
     lastButtonState = buttonState;
@@ -201,7 +212,7 @@ void setMotorA(int dir){
   if(dir == 1){
     digitalWrite(directionPinA, HIGH);
     digitalWrite(brakePinA, LOW);
-    analogWrite(speedPinA, speed);
+    analogWrite(speedPinA, 50);
   }
   else if(dir == -1){
     digitalWrite(directionPinA, LOW);
@@ -242,8 +253,7 @@ void readEncoderA(){
 
    }
   aLastState = encoderAState;
-  Serial.print("CounterA: ");
-  Serial.println(counterA);
+ 
   
 }
 
@@ -255,9 +265,7 @@ void readEncoderB(){
       counterB += directionB;
    }
   bLastState = encoderBState;
-  Serial.println("---");
-  Serial.print("CounterB: ");
-  Serial.println(counterB);
+ 
  
 }
 
@@ -266,13 +274,4 @@ void emergencyBrake(){
   emergency = true;
 }
 
-// void pciSetup(byte pin)
-// {
-//     *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin));  // enable pin
-//     PCIFR  |= bit (digitalPinToPCICRbit(pin)); // clear any outstanding interrupt
-//     PCICR  |= bit (digitalPinToPCICRbit(pin)); // enable interrupt for the group
-// }
-// ISR (PCINT2_vect) // handle pin change interrupt for D0 to D7 here
-//  {
-//      digitalWrite(13,digitalRead(7) and digitalRead(5));
-//  }  
+ 

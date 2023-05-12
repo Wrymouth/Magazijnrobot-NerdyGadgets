@@ -11,6 +11,7 @@ const int end = 1700;
 bool x = false;
 bool y = true;
 
+
 int direction = 0;
 
 // speed of motor
@@ -43,6 +44,7 @@ void setup() {
 
 void receiveEvent(int bytes) {
   x = Wire.read();    // read one character from the I2C
+  
 }
 
 // reads encoder and adds/ subtracts 1, based on direction, from counter everytime encoder pulses
@@ -77,7 +79,7 @@ readEncoder();
       digitalWrite(brakePin, HIGH);
       analogWrite(speedPin, 0);
       Wire.beginTransmission(8); // transmit to device #9
-      Wire.write(y);              // sends y
+      Wire.write(true);              // sends true
       Wire.endTransmission();    // stop transmitting
     }
   }
@@ -88,12 +90,14 @@ readEncoder();
       direction = 0;
       digitalWrite(brakePin, HIGH);
       analogWrite(speedPin, 0);
+      
       } 
       else{
       direction = -1;
       digitalWrite(brakePin, LOW);
       digitalWrite(directionPin, HIGH);
       analogWrite(speedPin, speed);
+      
     } 
   }
 }
