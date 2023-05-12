@@ -1,0 +1,5 @@
+{
+    "board": "arduino:avr:uno",
+    "sketch": "MagazijnrobotMaster\\MagazijnrobotMaster.ino",
+    "port": "COM5"
+}
