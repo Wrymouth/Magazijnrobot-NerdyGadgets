@@ -245,7 +245,6 @@ void loop() {
 
       break;
   }
-}
 // read joystick input
 // if joystick pressed up, call: setMotorA(directionA); directionA being 1 for up, setMotorB(directionB); directionB being 0 for standing still.
 // etc.
