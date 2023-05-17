@@ -112,7 +112,11 @@ void setup() {
 }
 
 void loop() {
+  emergencyBrake(); //Constantly check for emergency
 
+  if(emergency) {
+    currentRobotState = emergencyState; //Change case to emergency
+  }
     // read joystick input
     // if joystick pressed up, call: setMotorA(directionA); directionA being 1
     // for up, setMotorB(directionB); directionB being 0 for standing still.
@@ -225,8 +229,15 @@ void loop() {
       break;
     
     case emergencyState:
-      //all functions emergency
+      Serial.println("Emergency Pressed");
 
+      if(Serial.available() > 0) {
+        int emergencyValue = Serial.read(); //If any value is read, change emergency back to false
+
+        if(emergencyValue == 1) {
+          emergency = false;
+        }
+      }
       break;
 
     default:
@@ -235,7 +246,6 @@ void loop() {
       break;
   }
 }
-
 // read joystick input
 // if joystick pressed up, call: setMotorA(directionA); directionA being 1 for up, setMotorB(directionB); directionB being 0 for standing still.
 // etc.
@@ -326,6 +336,18 @@ void loop() {
     }
 }
 
+//Emergency check function
+void emergencyBrake(){
+  if(Serial.available() > 0) {
+    int emergencyValue = Serial.read(); //Returns an int either 0 or 1
+
+    if(emergencyValue == 1) {
+      emergency = true;
+    } else {
+      emergency = false;      
+    }  
+  }
+}
 
 // code to be executed on wire.onRecieve event
 void receiveEvent(int bytes) {
@@ -411,15 +433,6 @@ void readEncoderB() {
         counterB += directionB;
     }
     bLastState = encoderBState;
-}
-
-// if emergency button is pressed set emegerency to true, code in loop won't be
-// executed as long as emergency is true
-void emergencyBrake() { emergency = true; }
-
-// if emergency button is pressed set emegerency to true, code in loop won't be executed as long as emergency is true
-void emergencyBrake(){
-  emergency = true;
 }
 
 void readSerial(){
