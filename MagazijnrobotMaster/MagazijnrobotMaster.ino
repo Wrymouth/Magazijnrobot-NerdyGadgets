@@ -50,6 +50,7 @@ int counterB = 0;
 bool x = true;
 bool y = false;
 
+
 enum MasterSignals {
     MASTER_INITIAL,
     MASTER_JOYSTICK_PRESSED,
@@ -65,8 +66,20 @@ enum SlaveSignals {
 MasterSignals masterSignal = MASTER_INITIAL;
 SlaveSignals slaveSignal = SLAVE_INITIAL;
 
+//array for coordinates, contains 3 elements
+String coordinates[3];
+
+
 // used to get startposition of y motor during item pickup
 int a = 0;
+
+enum robot {
+  automatic,
+  joystick,
+  emergencyState
+};
+
+robot currentRobotState;
 
 void setup() {
     // starts serial communication
@@ -99,11 +112,135 @@ void setup() {
 }
 
 void loop() {
+
     // read joystick input
     // if joystick pressed up, call: setMotorA(directionA); directionA being 1
     // for up, setMotorB(directionB); directionB being 0 for standing still.
     // etc.
     // print data to Serial Monitor on Arduino IDE
+
+
+  readButton();
+  setMotorA(directionA);
+  setMotorB(directionB);
+  xDirection = analogRead(VrxPin);
+  yDirection = analogRead(VryPin);
+
+  readEncoderA();
+  readEncoderB();
+
+  switch(currentRobotState) {
+    case automatic:
+      //all functions for automatic
+      if(emergency){
+        currentRobotState = emergencyState;
+      }
+
+      readSerial();
+
+      for(String coordinate: coordinates){
+        int commaIndex = coordinate.indexOf(',');
+        String xCoordinate = coordinate.substring(0, commaIndex);
+        String yCoordinate = coordinate.substring(commaIndex + 1);
+
+        Serial.println(xCoordinate);
+        Serial.println(yCoordinate);
+      }
+
+      
+
+
+      break;
+    
+    case joystick:
+      if (emergency){
+        currentRobotState = emergencyState;
+      }
+      else if (!emergency && readJoystick){
+
+        if (!y){
+        //if joystick is untouched motorA + B stop moving
+          if (xDirection == 509){
+          directionA = 0;
+          directionB = 0;
+          //Serial.println("STOP");
+        }
+        //if joystick is pointed left motorA goes left
+          if (xDirection < 200) {
+            //Serial.println("Left");
+            directionA = -1;
+          
+        } 
+        //if joystick is pointed right motorA goes right
+            else if (xDirection > 700) {
+            //Serial.println("Right");
+            directionA = 1;
+            
+        }
+        //if joystick is pointed down motorB goes down
+          if (yDirection < 200) {
+            //Serial.println("Down");
+            directionB = -1;
+        } 
+        //if joystick is pointed up motorB goes up
+            else if (yDirection > 700) {
+            //Serial.println("Up");
+            directionB = 1;
+        }
+        }
+          Serial.print("CounterY: ");
+          Serial.println(counterA);
+          Serial.println("---");
+          Serial.print("CounterX: ");
+          Serial.println(counterB);
+        // if recieved data in variable y is true, determines start position of motor y and moves motor y up until pickupDistance is achieved.
+        // then motor stops and sends for the other arduino to begin retracting motor z
+        if (y){
+          
+          if (a == 0){
+            counterStart = counterA;
+            
+              a++;
+          }
+            
+          directionA = -1;
+          directionB = 0;
+          
+          if(counterA - counterStart < pickupDistance){
+          //Serial.println("check");
+            directionA = 0;
+            directionB = 0;
+            digitalWrite(brakePinA, HIGH);
+            digitalWrite(brakePinB, HIGH);
+            Wire.beginTransmission(9);
+            Wire.write(false);
+            Wire.endTransmission();
+            y = false;
+            a--;
+            
+          }
+        }
+      }
+
+      break;
+    
+    case emergencyState:
+      //all functions emergency
+
+      break;
+
+    default:
+      //functions default
+
+      break;
+  }
+}
+
+// read joystick input
+// if joystick pressed up, call: setMotorA(directionA); directionA being 1 for up, setMotorB(directionB); directionB being 0 for standing still.
+// etc.
+ // print data to Serial Monitor on Arduino IDE
+
 
     // Serial.println(directionA);
     // Serial.print("x = ");
@@ -111,6 +248,7 @@ void loop() {
     // Serial.print(", y = ");
     // Serial.println(yDirection);
     // delay(200);
+
 
     if (!emergency && readJoystick) {
         readButton();
@@ -187,6 +325,7 @@ void loop() {
         }
     }
 }
+
 
 // code to be executed on wire.onRecieve event
 void receiveEvent(int bytes) {
@@ -277,3 +416,43 @@ void readEncoderB() {
 // if emergency button is pressed set emegerency to true, code in loop won't be
 // executed as long as emergency is true
 void emergencyBrake() { emergency = true; }
+
+// if emergency button is pressed set emegerency to true, code in loop won't be executed as long as emergency is true
+void emergencyBrake(){
+  emergency = true;
+}
+
+void readSerial(){
+  if (Serial.available() >  0){
+      String instructions = "12,3 35,300 46,69";
+      // String instructions = Serial.readString(); // reads input from HMI
+      int spaceIndex = instructions.indexOf(' '); // saves space position in variable
+      int secondSpaceIndex = instructions.indexOf(' ', spaceIndex + 1); // saves second space position variable
+
+      // x + y from 3 products from an order
+      String firstCoordinate = instructions.substring(0,spaceIndex);
+      String secondCoordinate = instructions.substring(spaceIndex + 1, secondSpaceIndex);
+      String thirdCoordinate = instructions.substring(secondSpaceIndex + 1);
+
+      //converts string to integer and stores it in coordinates array
+      coordinates[0] = firstCoordinate;
+      coordinates[1] = secondCoordinate;
+      coordinates[2] = thirdCoordinate;
+
+
+      // int commaIndex = firstCoordinate.indexOf(',');
+      // String xFirstCoordinate = firstCoordinate.substring(0, commaIndex);
+      // String yFirstCoordinate = firstCoordinate.substring(commaIndex + 1);
+
+      // int commaSecondIndex = secondCoordinate.indexOf(',');
+      // String xSecondCoordinate = secondCoordinate.substring(0, commaSecondIndex);
+      // String ySecondCoordinate = secondCoordinate.substring(commaSecondIndex + 1);
+
+      // int commaThirdIndex = thirdCoordinate.indexOf(',');
+      // String xThirdCoordinate = thirdCoordinate.substring(0, commaThirdIndex);
+      // String yThirdCoordinate = thirdCoordinate.substring(commaThirdIndex + 1);
+
+      }
+  }
+
+
