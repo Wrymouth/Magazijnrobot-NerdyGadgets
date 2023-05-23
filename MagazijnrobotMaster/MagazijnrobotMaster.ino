@@ -16,11 +16,15 @@
 bool emergency = false;
 
 // distance motor y needs to move up to pickup an item
-const int pickupDistance = -200;
+const int pickupDistance = 200;
+
+// interval between Serial messages sent to HMI
+const int printInterval = 100;
+unsigned long previousPrintTime = 0;
 
 // reads y and x direction on the joystick and save it in variable
-int xDirection = analogRead(VrxPin);
-int yDirection = analogRead(VryPin);
+int joystickX = analogRead(VrxPin);
+int joystickY = analogRead(VryPin);
 bool readJoystick = true;
 
 // button
@@ -32,23 +36,28 @@ unsigned long lastTimeButtonStateChanged = 0;
 const int speed = 150;
 
 // change value based on joystick or HMI input
-int directionA = 0;
-int directionB = 0;
+int directionY = 0;
+int directionX = 0;
 
 // variables for reading encoderA
 int counterStart;
 int encoderAState;
 int aLastState;
-int counterA = 0;
+int counterY = 0;
 
 // variables for reading encoderB
 int encoderBState;
 int bLastState;
-int counterB = 0;
+int counterX = 0;
 
 // for connection between arduinos
 bool x = true;
 bool y = false;
+
+int goalX = 0;
+int goalY = 0;
+
+int coordinateIndex = 0;
 
 enum MasterSignals {
     MASTER_INITIAL,
@@ -65,8 +74,15 @@ enum SlaveSignals {
 MasterSignals masterSignal = MASTER_INITIAL;
 SlaveSignals slaveSignal = SLAVE_INITIAL;
 
+// array for coordinates, contains 3 elements
+String coordinates[3];
+
 // used to get startposition of y motor during item pickup
 int a = 0;
+
+enum RobotState { AUTOMATIC, JOYSTICK, EMERGENCY };
+
+RobotState currentRobotState = JOYSTICK;
 
 void setup() {
     // starts serial communication
@@ -100,92 +116,206 @@ void setup() {
 
 void loop() {
     // read joystick input
-    // if joystick pressed up, call: setMotorA(directionA); directionA being 1
-    // for up, setMotorB(directionB); directionB being 0 for standing still.
+    // if joystick pressed up, call: setMotorA(directionY); directionY being 1
+    // for up, setMotorB(directionX); directionX being 0 for standing still.
     // etc.
     // print data to Serial Monitor on Arduino IDE
 
-    // Serial.println(directionA);
-    // Serial.print("x = ");
-    // Serial.print(xDirection);
-    // Serial.print(", y = ");
-    // Serial.println(yDirection);
-    // delay(200);
+    // readButton();
+    setMotorA(directionY);
+    setMotorB(directionX);
+    // joystickX = analogRead(VrxPin);
+    // joystickY = analogRead(VryPin);
 
-    if (!emergency && readJoystick) {
-        readButton();
-        setMotorA(directionA);
-        setMotorB(directionB);
-        xDirection = analogRead(VrxPin);
-        yDirection = analogRead(VryPin);
-        readEncoderA();
-        readEncoderB();
-        if (slaveSignal == SLAVE_INITIAL && masterSignal == MASTER_INITIAL) {
-            // if joystick is untouched motorA + B stop moving
-            if (xDirection == 509 && yDirection == 528) {
-                directionA = 0;
-                directionB = 0;
-                // Serial.println("STOP");
-            }
-            // if joystick is pointed left motorA goes left
-            if (xDirection < 200) {
-                // Serial.println("Left");
-                directionA = -1;
+    readEncoderA();
+    readEncoderB();
 
+    readSerial();
+
+    if (millis() - previousPrintTime >= printInterval) {
+        previousPrintTime = millis();
+        Serial.print(counterX);
+        Serial.print(",");
+        Serial.println(counterY);
+    }
+
+    switch (currentRobotState) {
+        case AUTOMATIC: {
+            // all functions for automatic
+            if (emergency) {
+                currentRobotState = EMERGENCY;
             }
-            // if joystick is pointed right motorA goes right
-            else if (xDirection > 700) {
-                // Serial.println("Right");
-                directionA = 1;
+
+            int commaIndex = coordinates[coordinateIndex].indexOf(',');
+            String xCoordinate =
+                coordinates[coordinateIndex].substring(0, commaIndex);
+            String yCoordinate =
+                coordinates[coordinateIndex].substring(commaIndex + 1);
+
+            goalX = xCoordinate.toInt();
+            goalY = yCoordinate.toInt();
+
+            if (slaveSignal == SLAVE_INITIAL &&
+                masterSignal == MASTER_INITIAL) {
+                if (counterX < goalX) {
+                    directionX = 1;
+                } else if (counterX > goalX) {
+                    directionX = -1;
+                } else {
+                    directionX = 0;
+                }
+
+                if (counterY < goalY) {
+                    directionY = -1;
+                } else if (counterY > goalY) {
+                    directionY = 1;
+                } else {
+                    directionY = 0;
+                }
+
+                if (counterX == goalX && counterY == goalY) {
+                    a = 0;
+                    masterSignal = MASTER_JOYSTICK_PRESSED;
+                    wireSendSignal();
+                    coordinateIndex++;
+                    if (coordinateIndex > 2 ||
+                        coordinates[coordinateIndex] == "") {
+                        coordinateIndex = 0;
+                        currentRobotState = JOYSTICK;
+                    }
+                }
             }
-            // if joystick is pointed down motorB goes down
-            if (yDirection < 200) {
-                // Serial.println("Down");
-                directionB = -1;
+
+            if (slaveSignal == SLAVE_AT_END) {
+                if (a == 0) {
+                    counterStart = counterY;
+                    a++;
+                }
+
+                directionY = -1;
+                directionX = 0;
+
+                if (counterY - counterStart > pickupDistance) {
+                    directionY = 0;
+                    directionX = 0;
+                    digitalWrite(brakePinA, HIGH);
+                    digitalWrite(brakePinB, HIGH);
+                    masterSignal = MASTER_MOVE_FINISHED;
+                    wireSendSignal();
+                    y = false;
+                }
             }
-            // if joystick is pointed up motorB goes up
-            else if (yDirection > 700) {
-                // Serial.println("Up");
-                directionB = 1;
+            if (slaveSignal == SLAVE_AT_START) {
+                slaveSignal = SLAVE_INITIAL;
+                masterSignal = MASTER_INITIAL;
             }
+            break;
         }
-        Serial.print("CounterY: ");
-        Serial.println(counterA);
-        Serial.println("---");
-        Serial.print("CounterX: ");
-        Serial.println(counterB);
-        // if recieved data in variable y is true, determines start position of
-        // motor y and moves motor y up until pickupDistance is achieved. then
-        // motor stops and sends for the other arduino to begin retracting motor
-        // z
-        if (slaveSignal == SLAVE_AT_END) {
-            if (a == 0) {
-                counterStart = counterA;
 
-                a++;
+        case JOYSTICK: {
+            if (emergency) {
+                currentRobotState = EMERGENCY;
+            } else if (!emergency && readJoystick) {
+                readButton();
+                // setMotorA(directionY);
+                // setMotorB(directionX);
+                joystickX = analogRead(VrxPin);
+                joystickY = analogRead(VryPin);
+                // readEncoderA();
+                // readEncoderB();
+                if (slaveSignal == SLAVE_INITIAL &&
+                    masterSignal == MASTER_INITIAL) {
+                    // if joystick is untouched motorA + B stop moving
+                    if (joystickX == 510 && joystickY == 528) {
+                        directionY = 0;
+                        directionX = 0;
+                        // Serial.println("STOP");
+                    }
+                    // if joystick is pointed left motorA goes left
+                    if (joystickX < 200) {
+                        // Serial.println("Left");
+                        directionY = -1;
+
+                    }
+                    // if joystick is pointed right motorA goes right
+                    else if (joystickX > 700) {
+                        // Serial.println("Right");
+                        directionY = 1;
+                    }
+                    // if joystick is pointed down motorB goes down
+                    if (joystickY < 200) {
+                        // Serial.println("Down");
+                        directionX = -1;
+                    }
+                    // if joystick is pointed up motorB goes up
+                    else if (joystickY > 700) {
+                        // Serial.println("Up");
+                        directionX = 1;
+                    }
+                }
+
+                // if recieved data in variable y is true, determines start
+                // position of motor y and moves motor y up until pickupDistance
+                // is achieved. then motor stops and sends for the other arduino
+                // to begin retracting motor
+                // z
+                if (slaveSignal == SLAVE_AT_END) {
+                    if (a == 0) {
+                        counterStart = counterY;
+
+                        a++;
+                    }
+
+                    directionY = -1;
+                    directionX = 0;
+
+                    if (counterY -counterStart > pickupDistance) {
+                        directionY = 0;
+                        directionX = 0;
+                        digitalWrite(brakePinA, HIGH);
+                        digitalWrite(brakePinB, HIGH);
+                        masterSignal = MASTER_MOVE_FINISHED;
+                        wireSendSignal();
+                        y = false;
+                    }
+                }
+                if (slaveSignal == SLAVE_AT_START) {
+                    slaveSignal = SLAVE_INITIAL;
+                    masterSignal = MASTER_INITIAL;
+                }
             }
 
-            directionA = -1;
-            directionB = 0;
-
-            if (counterA - counterStart < pickupDistance) {
-                // Serial.println("check");
-                directionA = 0;
-                directionB = 0;
-                digitalWrite(brakePinA, HIGH);
-                digitalWrite(brakePinB, HIGH);
-                Wire.beginTransmission(9);
-                masterSignal = MASTER_MOVE_FINISHED;
-                Wire.write(masterSignal);
-                Wire.endTransmission();
-                y = false;
-            }
+            break;
         }
-        if (slaveSignal == SLAVE_AT_START) {
-          slaveSignal = SLAVE_INITIAL;
-          masterSignal = MASTER_INITIAL;
+        case EMERGENCY: {
+            // all functions emergency
+
+            Serial.println("emergency");
+
+            break;
+        }
+
+        default: {
+            // functions default
+
+            Serial.println("default");
+
+            break;
         }
     }
+
+    // read joystick input
+    // if joystick pressed up, call: setMotorA(directionY); directionY being 1
+    // for up, setMotorB(directionX); directionX being 0 for standing still.
+    // etc.
+    // print data to Serial Monitor on Arduino IDE
+
+    // Serial.println(directionY);
+    // Serial.print("x = ");
+    // Serial.print(joystickX);
+    // Serial.print(", y = ");
+    // Serial.println(joystickY);
+    // delay(200);
 }
 
 // code to be executed on wire.onRecieve event
@@ -204,17 +334,23 @@ void readButton() {
     int buttonState = digitalRead(SwPin);
     if (millis() - lastTimeButtonStateChanged > debounceDuration) {
         if (buttonState == LOW && lastButtonState == HIGH) {
+            directionY = 0;
+            directionX = 0;
             lastTimeButtonStateChanged = millis();
             a = 0;
             Serial.println("Switch pressed");
             readJoystick = false;
-            Wire.beginTransmission(9);  // transmit to device #9
             masterSignal = MASTER_JOYSTICK_PRESSED;
-            Wire.write(masterSignal);           // sends x
-            Wire.endTransmission();     // stop transmitting
+            wireSendSignal();
         }
         lastButtonState = buttonState;
     }
+}
+
+void wireSendSignal() {
+    Wire.beginTransmission(9);  // transmit to device #9
+    Wire.write(masterSignal);   // sends x
+    Wire.endTransmission();     // stop transmitting
 }
 
 // based on direction order motorA to move at predetermined speed in given
@@ -258,7 +394,7 @@ void readEncoderA() {
     encoderAState = digitalRead(encoderA);
 
     if (encoderAState != aLastState) {
-        counterA += directionA;
+        counterY -= directionY;
     }
     aLastState = encoderAState;
 }
@@ -269,7 +405,7 @@ void readEncoderB() {
     encoderBState = digitalRead(encoderB);
 
     if (encoderBState != bLastState) {
-        counterB += directionB;
+        counterX += directionX;
     }
     bLastState = encoderBState;
 }
@@ -277,3 +413,31 @@ void readEncoderB() {
 // if emergency button is pressed set emegerency to true, code in loop won't be
 // executed as long as emergency is true
 void emergencyBrake() { emergency = true; }
+
+void readSerial() {
+    if (Serial.available() > 0) {
+        currentRobotState = AUTOMATIC;
+        String instructions = Serial.readString();  // reads input from HMI
+        int spaceIndex =
+            instructions.indexOf(' ');  // saves space position in variable
+        int secondSpaceIndex = instructions.indexOf(
+            ' ', spaceIndex + 1);  // saves second space position variable
+
+        // x + y from 3 products from an order
+        String firstCoordinate = instructions.substring(0, spaceIndex);
+        String secondCoordinate = "";
+        String thirdCoordinate = "";
+        if (spaceIndex != -1) {
+            secondCoordinate =
+                instructions.substring(spaceIndex + 1, secondSpaceIndex);
+        }
+        if (secondSpaceIndex != -1) {
+            thirdCoordinate = instructions.substring(secondSpaceIndex + 1);
+        }
+
+        // converts string to integer and stores it in coordinates array
+        coordinates[0] = firstCoordinate;
+        coordinates[1] = secondCoordinate;
+        coordinates[2] = thirdCoordinate;
+    }
+}
