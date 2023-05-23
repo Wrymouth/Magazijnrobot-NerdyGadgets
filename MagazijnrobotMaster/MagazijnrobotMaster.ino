@@ -80,9 +80,12 @@ String coordinates[3];
 // used to get startposition of y motor during item pickup
 int a = 0;
 
-enum RobotState { AUTOMATIC, JOYSTICK, EMERGENCY };
+enum RobotState { AUTOMATIC, JOYSTICK, RESET, PICKUP, EMERGENCY };
 
 RobotState currentRobotState = JOYSTICK;
+RobotState previousRobotState = JOYSTICK;
+
+bool pickupReset = false;
 
 void setup() {
     // starts serial communication
@@ -144,6 +147,7 @@ void loop() {
             // all functions for automatic
             if (emergency) {
                 currentRobotState = EMERGENCY;
+                break;
             }
 
             int commaIndex = coordinates[coordinateIndex].indexOf(',');
@@ -175,13 +179,13 @@ void loop() {
 
                 if (counterX == goalX && counterY == goalY) {
                     a = 0;
-                    masterSignal = MASTER_JOYSTICK_PRESSED;
-                    wireSendSignal();
+
                     coordinateIndex++;
                     if (coordinateIndex > 2 ||
                         coordinates[coordinateIndex] == "") {
                         coordinateIndex = 0;
-                        currentRobotState = JOYSTICK;
+                        previousRobotState = currentRobotState;
+                        currentRobotState = RESET;
                     }
                 }
             }
@@ -215,14 +219,12 @@ void loop() {
         case JOYSTICK: {
             if (emergency) {
                 currentRobotState = EMERGENCY;
-            } else if (!emergency && readJoystick) {
+                break;
+            }
+            if (readJoystick) {
                 readButton();
-                // setMotorA(directionY);
-                // setMotorB(directionX);
                 joystickX = analogRead(VrxPin);
                 joystickY = analogRead(VryPin);
-                // readEncoderA();
-                // readEncoderB();
                 if (slaveSignal == SLAVE_INITIAL &&
                     masterSignal == MASTER_INITIAL) {
                     // if joystick is untouched motorA + B stop moving
@@ -269,7 +271,7 @@ void loop() {
                     directionY = -1;
                     directionX = 0;
 
-                    if (counterY -counterStart > pickupDistance) {
+                    if (counterY - counterStart > pickupDistance) {
                         directionY = 0;
                         directionX = 0;
                         digitalWrite(brakePinA, HIGH);
@@ -286,6 +288,50 @@ void loop() {
             }
 
             break;
+        }
+        case RESET: {
+            if (emergency) {
+                currentRobotState = EMERGENCY;
+                break;
+            }
+            if (slaveSignal == SLAVE_INITIAL &&
+                masterSignal == MASTER_INITIAL) {
+                moveToOrigin();
+            }
+            break;
+        }
+        case PICKUP: {
+            if (emergency) {
+                currentRobotState = EMERGENCY;
+                break;
+            }
+            if (masterSignal == MASTER_INITIAL &&
+                slaveSignal == SLAVE_INITIAL) {
+                masterSignal = MASTER_JOYSTICK_PRESSED;
+                wireSendSignal();
+            }
+            if (slaveSignal == SLAVE_AT_END) {
+                if (a == 0) {
+                    counterStart = counterY;
+                    a++;
+                }
+                directionY = -1;
+                directionX = 0;
+                if (counterY - counterStart > pickupDistance) {
+                    directionY = 0;
+                    directionX = 0;
+                    digitalWrite(brakePinA, HIGH);
+                    digitalWrite(brakePinB, HIGH);
+                    masterSignal = MASTER_MOVE_FINISHED;
+                    wireSendSignal();
+                    y = false;
+                }
+            }
+            if (slaveSignal == SLAVE_AT_START) {
+                slaveSignal = SLAVE_INITIAL;
+                masterSignal = MASTER_INITIAL;
+                currentRobotState = previousRobotState;
+            }
         }
         case EMERGENCY: {
             // all functions emergency
@@ -305,10 +351,9 @@ void loop() {
     }
 
     // read joystick input
-    // if joystick pressed up, call: setMotorA(directionY); directionY being 1
-    // for up, setMotorB(directionX); directionX being 0 for standing still.
-    // etc.
-    // print data to Serial Monitor on Arduino IDE
+    // if joystick pressed up, call: setMotorA(directionY); directionY
+    // being 1 for up, setMotorB(directionX); directionX being 0 for
+    // standing still. etc. print data to Serial Monitor on Arduino IDE
 
     // Serial.println(directionY);
     // Serial.print("x = ");
@@ -326,9 +371,9 @@ void receiveEvent(int bytes) {
     readJoystick = true;
 }
 
-// checks if joystick button is pressed, if true sends for the other arduino to
-// begin pickup process set a to 0 to be able to determine starting position of
-// motor y
+// checks if joystick button is pressed, if true sends for the other arduino
+// to begin pickup process set a to 0 to be able to determine starting
+// position of motor y
 
 void readButton() {
     int buttonState = digitalRead(SwPin);
@@ -388,8 +433,8 @@ void setMotorB(int dir) {
     }
 }
 
-// reads encoder from motor A and adds/ subtracts 1, based on direction, from
-// counter everytime encoder pulses
+// reads encoder from motor A and adds/ subtracts 1, based on direction,
+// from counter everytime encoder pulses
 void readEncoderA() {
     encoderAState = digitalRead(encoderA);
 
@@ -399,8 +444,8 @@ void readEncoderA() {
     aLastState = encoderAState;
 }
 
-// reads encoder from motor B and adds/ subtracts 1, based on direction, from
-// counter everytime encoder pulses
+// reads encoder from motor B and adds/ subtracts 1, based on direction,
+// from counter everytime encoder pulses
 void readEncoderB() {
     encoderBState = digitalRead(encoderB);
 
@@ -410,8 +455,8 @@ void readEncoderB() {
     bLastState = encoderBState;
 }
 
-// if emergency button is pressed set emegerency to true, code in loop won't be
-// executed as long as emergency is true
+// if emergency button is pressed set emegerency to true, code in loop won't
+// be executed as long as emergency is true
 void emergencyBrake() { emergency = true; }
 
 void readSerial() {
@@ -439,5 +484,27 @@ void readSerial() {
         coordinates[0] = firstCoordinate;
         coordinates[1] = secondCoordinate;
         coordinates[2] = thirdCoordinate;
+    }
+}
+
+void moveToOrigin() {
+    if (counterY > 0) {
+        directionY = -1;
+    } else if (counterY < 0) {
+        directionY = 1;
+    } else {
+        directionY = 0;
+    }
+
+    if (counterX > 0) {
+        directionX = -1;
+    } else if (counterX < 0) {
+        directionX = 1;
+    } else {
+        directionX = 0;
+    }
+
+    if (counterX == 0 && counterY == 0) {
+        currentRobotState = JOYSTICK;
     }
 }
