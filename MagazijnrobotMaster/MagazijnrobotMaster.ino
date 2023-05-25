@@ -149,6 +149,12 @@ void loop() {
                 currentRobotState = EMERGENCY;
                 break;
             }
+            if (coordinateIndex > 2 || coordinates[coordinateIndex] == "") {
+                coordinateIndex = 0;
+                previousRobotState = currentRobotState;
+                currentRobotState = RESET;
+                break;
+            }
 
             int commaIndex = coordinates[coordinateIndex].indexOf(',');
             String xCoordinate =
@@ -178,12 +184,6 @@ void loop() {
             if (counterX == goalX && counterY == goalY) {
                 a = 0;
                 coordinateIndex++;
-                if (coordinateIndex > 2 || coordinates[coordinateIndex] == "") {
-                    coordinateIndex = 0;
-                    previousRobotState = currentRobotState;
-                    currentRobotState = RESET;
-                    break;
-                }
                 previousRobotState = currentRobotState;
                 currentRobotState = PICKUP;
             }
@@ -257,7 +257,7 @@ void loop() {
                 masterSignal = MASTER_JOYSTICK_PRESSED;
                 wireSendSignal();
             }
-            if (slaveSignal == SLAVE_AT_END) {
+            if (slaveSignal == SLAVE_AT_END && masterSignal != MASTER_MOVE_FINISHED) {
                 if (a == 0) {
                     counterStart = counterY;
                     a++;
@@ -279,6 +279,7 @@ void loop() {
                 masterSignal = MASTER_INITIAL;
                 currentRobotState = previousRobotState;
             }
+            break;
         }
         case EMERGENCY: {
             // all functions emergency
@@ -436,9 +437,9 @@ void readSerial() {
 
 void moveToOrigin() {
     if (counterY > 0) {
-        directionY = -1;
-    } else if (counterY < 0) {
         directionY = 1;
+    } else if (counterY < 0) {
+        directionY = -1;
     } else {
         directionY = 0;
     }
