@@ -115,9 +115,9 @@ void setup() {
 }
 
 void loop() {
-    emergencyBrake();  // Constantly check for emergency
+    emergencyBrake(); //Check if emergency value is being received
 
-    if (emergency) {
+    if(emergency) {
         currentRobotState = EMERGENCY;  // Change case to emergency
     }
     // read joystick input
@@ -147,7 +147,7 @@ void loop() {
     switch (currentRobotState) {
         case AUTOMATIC: {
             // all functions for automatic
-            if (emergency) {
+            if(emergency) {
                 currentRobotState = EMERGENCY;
             }
 
@@ -293,11 +293,17 @@ void loop() {
             break;
         }
         case EMERGENCY: {
-            // all functions emergency
+          Serial.println("Emergency Pressed");
+            
+          if(Serial.available() > 0) {
+            char emergencyValue = Serial.read(); //If any value is read, change emergency back to false
 
-            Serial.println("emergency");
+            if(emergencyValue ==  "E") {
+              emergency = false;
+              break;
+            }
 
-            break;
+          break;
         }
 
         default: {
@@ -313,9 +319,9 @@ void loop() {
 // Emergency check function
 void emergencyBrake() {
     if (Serial.available() > 0) {
-        int emergencyValue = Serial.read();  // Returns an int either 0 or 1
+        char emergencyValue = Serial.read();  //If char "E" is received, the emergency brake will be activated
 
-        if (emergencyValue == 1) {
+        if (emergencyValue == "E") {
             emergency = true;
         } else {
             emergency = false;
@@ -449,13 +455,7 @@ void readSerial() {
         // commaThirdIndex); String yThirdCoordinate =
         // thirdCoordinate.substring(commaThirdIndex + 1);
     }
-}
-
-             // if emergency button is pressed set emegerency to true, code in
-             // loop won't be executed as long as emergency is true
-    void emergencyBrake() {
-    emergency = true;
-}
+}       
 
 void readSerial() {
     if (Serial.available() > 0) {
