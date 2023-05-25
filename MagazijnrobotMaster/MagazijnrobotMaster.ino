@@ -159,59 +159,33 @@ void loop() {
             goalX = xCoordinate.toInt();
             goalY = yCoordinate.toInt();
 
-            if (slaveSignal == SLAVE_INITIAL &&
-                masterSignal == MASTER_INITIAL) {
-                if (counterX < goalX) {
-                    directionX = 1;
-                } else if (counterX > goalX) {
-                    directionX = -1;
-                } else {
-                    directionX = 0;
-                }
-
-                if (counterY < goalY) {
-                    directionY = -1;
-                } else if (counterY > goalY) {
-                    directionY = 1;
-                } else {
-                    directionY = 0;
-                }
-
-                if (counterX == goalX && counterY == goalY) {
-                    a = 0;
-
-                    coordinateIndex++;
-                    if (coordinateIndex > 2 ||
-                        coordinates[coordinateIndex] == "") {
-                        coordinateIndex = 0;
-                        previousRobotState = currentRobotState;
-                        currentRobotState = RESET;
-                    }
-                }
-            }
-
-            if (slaveSignal == SLAVE_AT_END) {
-                if (a == 0) {
-                    counterStart = counterY;
-                    a++;
-                }
-
-                directionY = -1;
+            if (counterX < goalX) {
+                directionX = 1;
+            } else if (counterX > goalX) {
+                directionX = -1;
+            } else {
                 directionX = 0;
-
-                if (counterY - counterStart > pickupDistance) {
-                    directionY = 0;
-                    directionX = 0;
-                    digitalWrite(brakePinA, HIGH);
-                    digitalWrite(brakePinB, HIGH);
-                    masterSignal = MASTER_MOVE_FINISHED;
-                    wireSendSignal();
-                    y = false;
-                }
             }
-            if (slaveSignal == SLAVE_AT_START) {
-                slaveSignal = SLAVE_INITIAL;
-                masterSignal = MASTER_INITIAL;
+
+            if (counterY < goalY) {
+                directionY = -1;
+            } else if (counterY > goalY) {
+                directionY = 1;
+            } else {
+                directionY = 0;
+            }
+
+            if (counterX == goalX && counterY == goalY) {
+                a = 0;
+                coordinateIndex++;
+                if (coordinateIndex > 2 || coordinates[coordinateIndex] == "") {
+                    coordinateIndex = 0;
+                    previousRobotState = currentRobotState;
+                    currentRobotState = RESET;
+                    break;
+                }
+                previousRobotState = currentRobotState;
+                currentRobotState = PICKUP;
             }
             break;
         }
@@ -225,35 +199,32 @@ void loop() {
                 readButton();
                 joystickX = analogRead(VrxPin);
                 joystickY = analogRead(VryPin);
-                if (slaveSignal == SLAVE_INITIAL &&
-                    masterSignal == MASTER_INITIAL) {
-                    // if joystick is untouched motorA + B stop moving
-                    if (joystickX == 510 && joystickY == 528) {
-                        directionY = 0;
-                        directionX = 0;
-                        // Serial.println("STOP");
-                    }
-                    // if joystick is pointed left motorA goes left
-                    if (joystickX < 200) {
-                        // Serial.println("Left");
-                        directionY = -1;
+                // if joystick is untouched motorA + B stop moving
+                if (joystickX == 510 && joystickY == 528) {
+                    directionY = 0;
+                    directionX = 0;
+                    // Serial.println("STOP");
+                }
+                // if joystick is pointed left motorA goes left
+                if (joystickX < 200) {
+                    // Serial.println("Left");
+                    directionY = -1;
 
-                    }
-                    // if joystick is pointed right motorA goes right
-                    else if (joystickX > 700) {
-                        // Serial.println("Right");
-                        directionY = 1;
-                    }
-                    // if joystick is pointed down motorB goes down
-                    if (joystickY < 200) {
-                        // Serial.println("Down");
-                        directionX = -1;
-                    }
-                    // if joystick is pointed up motorB goes up
-                    else if (joystickY > 700) {
-                        // Serial.println("Up");
-                        directionX = 1;
-                    }
+                }
+                // if joystick is pointed right motorA goes right
+                else if (joystickX > 700) {
+                    // Serial.println("Right");
+                    directionY = 1;
+                }
+                // if joystick is pointed down motorB goes down
+                if (joystickY < 200) {
+                    // Serial.println("Down");
+                    directionX = -1;
+                }
+                // if joystick is pointed up motorB goes up
+                else if (joystickY > 700) {
+                    // Serial.println("Up");
+                    directionX = 1;
                 }
 
                 // if recieved data in variable y is true, determines start
@@ -261,30 +232,6 @@ void loop() {
                 // is achieved. then motor stops and sends for the other arduino
                 // to begin retracting motor
                 // z
-                if (slaveSignal == SLAVE_AT_END) {
-                    if (a == 0) {
-                        counterStart = counterY;
-
-                        a++;
-                    }
-
-                    directionY = -1;
-                    directionX = 0;
-
-                    if (counterY - counterStart > pickupDistance) {
-                        directionY = 0;
-                        directionX = 0;
-                        digitalWrite(brakePinA, HIGH);
-                        digitalWrite(brakePinB, HIGH);
-                        masterSignal = MASTER_MOVE_FINISHED;
-                        wireSendSignal();
-                        y = false;
-                    }
-                }
-                if (slaveSignal == SLAVE_AT_START) {
-                    slaveSignal = SLAVE_INITIAL;
-                    masterSignal = MASTER_INITIAL;
-                }
             }
 
             break;
@@ -385,8 +332,8 @@ void readButton() {
             a = 0;
             Serial.println("Switch pressed");
             readJoystick = false;
-            masterSignal = MASTER_JOYSTICK_PRESSED;
-            wireSendSignal();
+            previousRobotState = currentRobotState;
+            currentRobotState = PICKUP;
         }
         lastButtonState = buttonState;
     }
