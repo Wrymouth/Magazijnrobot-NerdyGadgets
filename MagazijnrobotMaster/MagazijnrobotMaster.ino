@@ -33,7 +33,7 @@ unsigned long debounceDuration = 50;  // millis
 unsigned long lastTimeButtonStateChanged = 0;
 
 // int pos = 0;
-const int speed = 150;
+const int speed = 220;
 
 // change value based on joystick or HMI input
 int directionY = 0;
@@ -353,7 +353,7 @@ void setMotorA(int dir) {
     if (dir == 1) {
         digitalWrite(directionPinA, HIGH);
         digitalWrite(brakePinA, LOW);
-        analogWrite(speedPinA, 50);
+        analogWrite(speedPinA, 120);
     } else if (dir == -1) {
         digitalWrite(directionPinA, LOW);
         digitalWrite(brakePinA, LOW);
