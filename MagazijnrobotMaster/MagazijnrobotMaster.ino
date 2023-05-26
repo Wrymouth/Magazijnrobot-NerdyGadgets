@@ -145,10 +145,6 @@ void loop() {
     switch(currentRobotState) {
         case AUTOMATIC: {
             // all functions for automatic
-            if(emergency) {
-                currentRobotState = EMERGENCY;
-            }
-
             int commaIndex = coordinates[coordinateIndex].indexOf(',');
             String xCoordinate =
                 coordinates[coordinateIndex].substring(0, commaIndex);
@@ -216,9 +212,7 @@ void loop() {
         }
 
         case JOYSTICK: {
-            if (emergency) {
-                currentRobotState = EMERGENCY;
-            } else if (!emergency && readJoystick) {
+              if(readJoystick) {
                 readButton();
                 // setMotorA(directionY);
                 // setMotorB(directionX);
