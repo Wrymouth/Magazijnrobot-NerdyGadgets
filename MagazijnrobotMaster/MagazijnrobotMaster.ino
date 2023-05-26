@@ -115,8 +115,6 @@ void setup() {
 }
 
 void loop() {
-    emergencyBrake(); //Check if emergency value is being received
-
     if(emergency) {
         currentRobotState = EMERGENCY;  // Change case to emergency
     }
@@ -144,7 +142,7 @@ void loop() {
         Serial.println(counterY);
     }
 
-    switch (currentRobotState) {
+    switch(currentRobotState) {
         case AUTOMATIC: {
             // all functions for automatic
             if(emergency) {
@@ -293,16 +291,12 @@ void loop() {
             break;
         }
         case EMERGENCY: {
+          //Emergency functionality
           Serial.println("Emergency Pressed");
-            
-          if(Serial.available() > 0) {
-            char emergencyValue = Serial.read(); //If any value is read, change emergency back to false
 
-            if(emergencyValue ==  "E") {
-              emergency = false;
-              break;
-            }
-
+          directionY = 0;
+          directionX = 0;
+      
           break;
         }
 
@@ -313,20 +307,7 @@ void loop() {
 
             break;
         }
-    }
-}
-
-// Emergency check function
-void emergencyBrake() {
-    if (Serial.available() > 0) {
-        char emergencyValue = Serial.read();  //If char "E" is received, the emergency brake will be activated
-
-        if (emergencyValue == "E") {
-            emergency = true;
-        } else {
-            emergency = false;
-        }
-    }
+      }  
 }
 
 // code to be executed on wire.onRecieve event
@@ -420,47 +401,17 @@ void readEncoderB() {
     }
     bLastState = encoderBState;
 }
-
-void readSerial() {
-    if (Serial.available() > 0) {
-        String instructions = "12,3 35,300 46,69";
-        // String instructions = Serial.readString(); // reads input from HMI
-        int spaceIndex =
-            instructions.indexOf(' ');  // saves space position in variable
-        int secondSpaceIndex = instructions.indexOf(
-            ' ', spaceIndex + 1);  // saves second space position variable
-
-        // x + y from 3 products from an order
-        String firstCoordinate = instructions.substring(0, spaceIndex);
-        String secondCoordinate =
-            instructions.substring(spaceIndex + 1, secondSpaceIndex);
-        String thirdCoordinate = instructions.substring(secondSpaceIndex + 1);
-
-        // converts string to integer and stores it in coordinates array
-        coordinates[0] = firstCoordinate;
-        coordinates[1] = secondCoordinate;
-        coordinates[2] = thirdCoordinate;
-
-        // int commaIndex = firstCoordinate.indexOf(',');
-        // String xFirstCoordinate = firstCoordinate.substring(0, commaIndex);
-        // String yFirstCoordinate = firstCoordinate.substring(commaIndex + 1);
-
-        // int commaSecondIndex = secondCoordinate.indexOf(',');
-        // String xSecondCoordinate = secondCoordinate.substring(0,
-        // commaSecondIndex); String ySecondCoordinate =
-        // secondCoordinate.substring(commaSecondIndex + 1);
-
-        // int commaThirdIndex = thirdCoordinate.indexOf(',');
-        // String xThirdCoordinate = thirdCoordinate.substring(0,
-        // commaThirdIndex); String yThirdCoordinate =
-        // thirdCoordinate.substring(commaThirdIndex + 1);
-    }
-}       
-
+           
 void readSerial() {
     if (Serial.available() > 0) {
         currentRobotState = AUTOMATIC;
         String instructions = Serial.readString();  // reads input from HMI
+
+        if(instructions == "E") { //Check for emergency signal
+            emergency = !emergency;
+            return;
+        }
+
         int spaceIndex =
             instructions.indexOf(' ');  // saves space position in variable
         int secondSpaceIndex = instructions.indexOf(
