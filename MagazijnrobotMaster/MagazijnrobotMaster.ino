@@ -19,7 +19,7 @@ bool emergency = false;
 const int pickupDistance = 200;
 
 // interval between Serial messages sent to HMI
-const int printInterval = 100;
+const int printInterval = 500;
 unsigned long previousPrintTime = 0;
 
 // reads y and x direction on the joystick and save it in variable
@@ -394,7 +394,7 @@ void readEncoderB() {
 void readSerial() {
     if (Serial.available() > 0) {
         currentRobotState = AUTOMATIC;
-        String instructions = Serial.readString();  // reads input from HMI
+        String instructions = Serial.readStringUntil("\n");  // reads input from HMI
 
         if(instructions == "E") { //Check for emergency signal
             emergency = !emergency;
