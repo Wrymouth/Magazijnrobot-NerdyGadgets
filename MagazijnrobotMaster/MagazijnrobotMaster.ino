@@ -118,6 +118,9 @@ void setup() {
 }
 
 void loop() {
+    if(emergency) {
+        currentRobotState = EMERGENCY;  // Change case to emergency
+    }
     // read joystick input
     // if joystick pressed up, call: setMotorA(directionY); directionY being 1
     // for up, setMotorB(directionX); directionX being 0 for standing still.
@@ -142,20 +145,15 @@ void loop() {
         Serial.println(counterY);
     }
 
-    switch (currentRobotState) {
+    switch(currentRobotState) {
         case AUTOMATIC: {
             // all functions for automatic
-            if (emergency) {
-                currentRobotState = EMERGENCY;
-                break;
-            }
             if (coordinateIndex > 2 || coordinates[coordinateIndex] == "") {
                 coordinateIndex = 0;
                 previousRobotState = currentRobotState;
                 currentRobotState = RESET;
                 break;
             }
-
             int commaIndex = coordinates[coordinateIndex].indexOf(',');
             String xCoordinate =
                 coordinates[coordinateIndex].substring(0, commaIndex);
@@ -282,11 +280,13 @@ void loop() {
             break;
         }
         case EMERGENCY: {
-            // all functions emergency
+          //Emergency functionality
+          Serial.println("Emergency Pressed");
 
-            Serial.println("emergency");
-
-            break;
+          directionY = 0;
+          directionX = 0;
+      
+          break;
         }
 
         default: {
@@ -296,19 +296,7 @@ void loop() {
 
             break;
         }
-    }
-
-    // read joystick input
-    // if joystick pressed up, call: setMotorA(directionY); directionY
-    // being 1 for up, setMotorB(directionX); directionX being 0 for
-    // standing still. etc. print data to Serial Monitor on Arduino IDE
-
-    // Serial.println(directionY);
-    // Serial.print("x = ");
-    // Serial.print(joystickX);
-    // Serial.print(", y = ");
-    // Serial.println(joystickY);
-    // delay(200);
+      }  
 }
 
 // code to be executed on wire.onRecieve event
@@ -403,14 +391,16 @@ void readEncoderB() {
     bLastState = encoderBState;
 }
 
-// if emergency button is pressed set emegerency to true, code in loop won't
-// be executed as long as emergency is true
-void emergencyBrake() { emergency = true; }
-
 void readSerial() {
     if (Serial.available() > 0) {
         currentRobotState = AUTOMATIC;
         String instructions = Serial.readString();  // reads input from HMI
+
+        if(instructions == "E") { //Check for emergency signal
+            emergency = !emergency;
+            return;
+        }
+
         int spaceIndex =
             instructions.indexOf(' ');  // saves space position in variable
         int secondSpaceIndex = instructions.indexOf(
