@@ -118,7 +118,7 @@ void setup() {
 }
 
 void loop() {
-    if(emergency) {
+    if (emergency) {
         currentRobotState = EMERGENCY;  // Change case to emergency
     }
     // read joystick input
@@ -145,7 +145,7 @@ void loop() {
         Serial.println(counterY);
     }
 
-    switch(currentRobotState) {
+    switch (currentRobotState) {
         case AUTOMATIC: {
             // all functions for automatic
             if (coordinateIndex > 2 || coordinates[coordinateIndex] == "") {
@@ -198,11 +198,13 @@ void loop() {
                 joystickX = analogRead(VrxPin);
                 joystickY = analogRead(VryPin);
                 // if joystick is untouched motorA + B stop moving
-                if (joystickX == 510 && joystickY == 528) {
-                    directionY = 0;
+                if (joystickX == 510) {
                     directionX = 0;
-                    // Serial.println("STOP");
                 }
+                if (joystickY == 520) {
+                    directionY = 0;
+                }
+                // Serial.println("STOP");
                 // if joystick is pointed left motorA goes left
                 if (joystickX < 200) {
                     // Serial.println("Left");
@@ -255,7 +257,8 @@ void loop() {
                 masterSignal = MASTER_JOYSTICK_PRESSED;
                 wireSendSignal();
             }
-            if (slaveSignal == SLAVE_AT_END && masterSignal != MASTER_MOVE_FINISHED) {
+            if (slaveSignal == SLAVE_AT_END &&
+                masterSignal != MASTER_MOVE_FINISHED) {
                 if (a == 0) {
                     counterStart = counterY;
                     a++;
@@ -280,13 +283,13 @@ void loop() {
             break;
         }
         case EMERGENCY: {
-          //Emergency functionality
-          Serial.println("Emergency Pressed");
+            // Emergency functionality
+            Serial.println("Emergency Pressed");
 
-          directionY = 0;
-          directionX = 0;
-      
-          break;
+            directionY = 0;
+            directionX = 0;
+
+            break;
         }
 
         default: {
@@ -296,7 +299,7 @@ void loop() {
 
             break;
         }
-      }  
+    }
 }
 
 // code to be executed on wire.onRecieve event
@@ -394,9 +397,10 @@ void readEncoderB() {
 void readSerial() {
     if (Serial.available() > 0) {
         currentRobotState = AUTOMATIC;
-        String instructions = Serial.readStringUntil("\n");  // reads input from HMI
+        String instructions =
+            Serial.readStringUntil('\n');  // reads input from HMI
 
-        if(instructions == "E") { //Check for emergency signal
+        if (instructions.charAt(0) == 'E') {  // Check for emergency signal
             emergency = !emergency;
             return;
         }
