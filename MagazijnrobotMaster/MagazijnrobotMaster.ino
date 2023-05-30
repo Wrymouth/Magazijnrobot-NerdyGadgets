@@ -12,20 +12,21 @@
 #include <PinChangeInterrupt.h>
 #include <Wire.h>
 #include <ezButton.h>
-
-ezButton limitSwitch1(0);    // create ezButton object that attach to pin 1;
-ezButton limitSwitch2(7);    // create ezButton object that attach to pin 2;
+// pins for limitswitches on X and Y axis
+ezButton limitSwitch1(10);    // create ezButton object that attach to pin 10;
+ezButton limitSwitch2(7);    // create ezButton object that attach to pin 7;
 ezButton limitSwitch3(6);    // create ezButton object that attach to pin 6;
-ezButton limitSwitch4(10);  // create ezButton object that attach to pin 10;
+
 
 
 
 // bool that changes to true when emergency button is pressed
 bool emergency = false;
+//bools to check for limitswitches direction
 bool SwitchYup = false;
 bool SwitchDown = false;
-bool SwitchLeft = false;
 bool SwitchRight = false;
+bool SwitchLeft = false;
 
 
 
@@ -36,9 +37,7 @@ const int pickupDistance = 200;
 const int printInterval = 100;
 unsigned long previousPrintTime = 0;
 
-//
-unsigned long starttijd;        // CRUCIAAL WACHTFUNCTIE
-unsigned long wachttijd = 500;  // HANDIG WACHTFUNCTIE
+
 
 // reads y and x direction on the joystick and save it in variable
 int joystickX = analogRead(VrxPin);
@@ -117,6 +116,7 @@ void setup() {
   // set debounce time to 50 milliseconds
   limitSwitch1.setDebounceTime(50);
   limitSwitch2.setDebounceTime(50);
+  limitSwitch3.setDebounceTime(50);
 
   // writes PWM frequency to be used by motors
   TCCR2B = TCCR2B & B11111000 | B00000111;  // for PWM frequency of 30.64 Hz
@@ -145,35 +145,30 @@ void setup() {
 }
 
 void loop() {
-  // read joystick input
-  // if joystick pressed up, call: setMotorA(directionY); directionY being 1
-  // for up, setMotorB(directionX); directionX being 0 for standing still.
-  // etc.
+
   // print data to Serial Monitor on Arduino IDE
 
 
 
-  // readButton();
   setMotorA(directionY);
   setMotorB(directionX);
-  // joystickX = analogRead(VrxPin);
-  // joystickY = analogRead(VryPin);
-
-
+  
   readEncoderA();
   readEncoderB();
-
+ 
   readSerial();
-
+  
+  switchY1();
   switchY2();
+  switchX2();
 
 
 
   if (millis() - previousPrintTime >= printInterval) {
     previousPrintTime = millis();
-    // Serial.print(counterX);
-    // Serial.print(",");
-    // Serial.println(counterY);
+    Serial.print(counterX);
+    Serial.print(",");
+    Serial.println(counterY);
   }
 
   switch (currentRobotState) {
@@ -505,25 +500,10 @@ void moveToOrigin() {
   }
 }
 
-// void switchX(){
-//    limitSwitch.loop(); // MUST call the loop() function first
 
-//   if(limitSwitch.isPressed())
-//     Serial.println("The limit switch: UNTOUCHED -> TOUCHED");
-
-//   if(limitSwitch.isReleased())
-//     Serial.println("The limit switch: TOUCHED -> UNTOUCHED");
-
-//   int state = limitSwitch.getState();
-//   if(state == HIGH)
-//     Serial.println("The limit switch: UNTOUCHED");
-//   else
-//     Serial.println("The limit switch: TOUCHED");
-// }
 
 void switchY1() {
   limitSwitch1.loop();
-
 
   // //Get state of limit switch on X-axis and do something
   int stateY1 = limitSwitch1.getState();
@@ -533,7 +513,6 @@ void switchY1() {
 
 
   } else {
-    // Serial.println("The limit switch on X-Axis is: UNTOUCHED");
     counterY = 0;
     SwitchDown = true;
     //Serial.println("activated.");
@@ -553,37 +532,19 @@ void switchY2() {
 
 
   } else {
-    // Serial.println("The limit switch on X-Axis is: UNTOUCHED");
-    //directionY = 0;
     SwitchYup = true;
     //Serial.println("activated.");
   }
 }
 
-void switchX1() {
-  limitSwitch1.loop();
 
-
-  // //Get state of limit switch on X-axis and do something
-  int stateX1 = limitSwitch3.getState();
-  if (stateX1 == LOW) {
-    //Serial.println("unactivated");
-    SwitchLeft = false;
-
-
-  } else {
-    // Serial.println("The limit switch on X-Axis is: UNTOUCHED");
-    SwitchLeft = true;
-    //Serial.println("activated.");
-  }
-}
 
 void switchX2() {
   limitSwitch1.loop();
 
 
   // //Get state of limit switch on X-axis and do something
-  int stateX2 = limitSwitch4.getState();
+  int stateX2 = limitSwitch3.getState();
   if (stateX2 == LOW) {
     //Serial.println("unactivated");
     SwitchRight = false;
@@ -596,4 +557,3 @@ void switchX2() {
     //Serial.println("activated.");
   }
 }
-
