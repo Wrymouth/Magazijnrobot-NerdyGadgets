@@ -5,7 +5,7 @@
 #include <Wire.h>
 
 // the end position of the motor on the z axes
-const int end = 1700;
+const int end = 700;
 
 // used for communication between arduinos
 bool x = false;
@@ -88,7 +88,7 @@ void loop() {
 
         // if end is reached stop motor and send for the other arduino to move
         // up a bit
-        if (counter >= end) {
+        if (counter == end) {
             direction = 0;
             digitalWrite(brakePin, HIGH);
             analogWrite(speedPin, 0);
@@ -102,7 +102,7 @@ void loop() {
     // if y axes has stopped moving to pickup an item, move motor backwards
     // until z motor is back at starting position
     if (masterSignal == MASTER_MOVE_FINISHED) {
-        if (counter <= 0) {
+        if (counter == 0) {
             direction = 0;
             digitalWrite(brakePin, HIGH);
             analogWrite(speedPin, 0);
