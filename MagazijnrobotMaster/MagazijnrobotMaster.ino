@@ -161,9 +161,11 @@ void loop() {
             // all functions for automatic
 
             if (coordinateIndex > 2 || coordinates[coordinateIndex] == "") {
-                coordinateIndex = 0;
                 previousRobotState = currentRobotState;
+                Serial.print("p");
+                Serial.println(coordinateIndex);
                 currentRobotState = RESET;
+                coordinateIndex = 0;
                 break;
             }
 
