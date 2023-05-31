@@ -3,6 +3,7 @@
 #define brakePin 8
 #define encoder 5
 #include <Wire.h>
+#include <ezButton.h>
 
 // the end position of the motor on the z axes
 const int end = 700;
@@ -10,6 +11,12 @@ const int end = 700;
 // used for communication between arduinos
 bool x = false;
 bool y = true;
+
+//pins for limit switch and emergency button
+ezButton limitSwitch4(4);
+bool SwitchLeft = false;
+
+ezButton emergencyBtn(2);
 
 enum MasterSignals {
     MASTER_INITIAL,
@@ -21,6 +28,7 @@ enum SlaveSignals {
     SLAVE_INITIAL,
     SLAVE_AT_END,
     SLAVE_AT_START,
+    SLAVE_EMERGENCY,
 };
 
 MasterSignals masterSignal = MASTER_INITIAL;
@@ -36,7 +44,7 @@ int encoderState;
 int LastState;
 int counter;
 
-void setup() {
+void setup() {    
     // put your setup code here, to run once:
     Serial.begin(9600);
     // writes PWM frequency to be used by motor
@@ -54,6 +62,8 @@ void setup() {
     // interrupts evrytime encoder A/B pulses and executes readEncoder functions
     // accordingly. this makes sure no pulse is missed
     attachInterrupt(digitalPinToInterrupt(encoder), readEncoder, RISING);
+
+    emergencyBtn.setDebounceTime(50);
 }
 
 void receiveEvent(int bytes) {
@@ -79,6 +89,18 @@ void readEncoder() {
 void loop() {
     // put your main code here, to run repeatedly:
     readEncoder();
+
+    emergencyBtn.loop();
+    int emergencyBtnState = emergencyBtn.isReleased(); 
+
+    if(emergencyBtnState == 1) {
+      // Serial.println("Hallo");
+      slaveSignal = SLAVE_EMERGENCY;
+      Wire.beginTransmission(8);
+      Wire.write(slaveSignal);
+      Wire.endTransmission();      
+    }
+
     // moves z motor forward if joystick button is pressed
     if (masterSignal == MASTER_JOYSTICK_PRESSED && slaveSignal == SLAVE_INITIAL) {
         direction = 1;
@@ -117,8 +139,30 @@ void loop() {
             analogWrite(speedPin, speed);
         }
     }
+    
     if (slaveSignal == SLAVE_AT_START) {
         slaveSignal = SLAVE_INITIAL;
         masterSignal = MASTER_INITIAL;
     }
+}
+
+void switchX1() {
+  
+limitSwitch4.loop();
+
+
+  // //Get state of limit switch on X-axis and do something
+  int stateX1 = limitSwitch4.getState();
+  if (stateX1 == LOW) {
+    //Serial.println("unactivated");
+    SwitchLeft = false;
+
+
+  } else {
+    Wire.beginTransmission(8);  // transmit to device #9
+    SwitchLeft = true;
+    Wire.write(SwitchLeft);           // sends true
+    Wire.endTransmission();     // stop transmitting
+    //Serial.println("activated.");
+  }
 }

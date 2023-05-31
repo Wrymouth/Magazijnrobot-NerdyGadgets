@@ -69,6 +69,7 @@ enum SlaveSignals {
     SLAVE_INITIAL,
     SLAVE_AT_END,
     SLAVE_AT_START,
+    SLAVE_EMERGENCY,
 };
 
 MasterSignals masterSignal = MASTER_INITIAL;
@@ -400,8 +401,9 @@ void readSerial() {
         String instructions =
             Serial.readStringUntil('\n');  // reads input from HMI
 
-        if (instructions.charAt(0) == 'E') {  // Check for emergency signal
+        if(instructions.charAt(0) == 'E' || slaveSignal == SLAVE_EMERGENCY) {  // Check for emergency signal
             emergency = !emergency;
+            Serial.println(emergency);
             return;
         }
 
