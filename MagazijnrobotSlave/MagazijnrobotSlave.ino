@@ -87,14 +87,15 @@ void readEncoder() {
 }
 
 void loop() {
+    Serial.println(slaveSignal);
     // put your main code here, to run repeatedly:
     readEncoder();
 
     emergencyBtn.loop();
     int emergencyBtnState = emergencyBtn.isReleased(); 
 
-    if(emergencyBtnState == 1) {
-      // Serial.println("Hallo");
+    if(emergencyBtnState == HIGH) {
+      Serial.println("Hallo");
       slaveSignal = SLAVE_EMERGENCY;
       Wire.beginTransmission(8);
       Wire.write(slaveSignal);

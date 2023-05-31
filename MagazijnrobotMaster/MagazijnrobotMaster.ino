@@ -119,6 +119,7 @@ void setup() {
 }
 
 void loop() {
+    Emergency();
     if (emergency) {
         currentRobotState = EMERGENCY;  // Change case to emergency
     }
@@ -396,12 +397,13 @@ void readEncoderB() {
 }
 
 void readSerial() {
+  // Serial.println("Serial");
     if (Serial.available() > 0) {
         currentRobotState = AUTOMATIC;
         String instructions =
             Serial.readStringUntil('\n');  // reads input from HMI
 
-        if(instructions.charAt(0) == 'E' || slaveSignal == SLAVE_EMERGENCY) {  // Check for emergency signal
+        if(instructions.charAt(0) == 'E') {  // Check for emergency signal
             emergency = !emergency;
             Serial.println(emergency);
             return;
@@ -451,4 +453,13 @@ void moveToOrigin() {
     if (counterX == 0 && counterY == 0) {
         currentRobotState = JOYSTICK;
     }
+}
+
+void Emergency() {
+  Serial.println(SLAVE_EMERGENCY);
+  if(slaveSignal == SLAVE_EMERGENCY) {
+    emergency = !emergency;
+    Serial.println(emergency);
+    return;
+  }
 }
