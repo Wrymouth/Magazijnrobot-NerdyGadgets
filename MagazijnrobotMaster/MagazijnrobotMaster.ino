@@ -297,6 +297,9 @@ void loop() {
 
             break;
         }
+        default: {
+            Serial.println("default");
+        }
     }
 }
 
@@ -319,7 +322,7 @@ void readButton() {
             directionY = 0;
             directionX = 0;
             lastTimeButtonStateChanged = millis();
-
+            a = 0;
             Serial.println("Switch pressed");
             readJoystick = false;
             previousRobotState = currentRobotState;
