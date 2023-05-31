@@ -163,9 +163,11 @@ void loop() {
             // all functions for automatic
 
             if (coordinateIndex > 2 || coordinates[coordinateIndex] == "") {
-                coordinateIndex = 0;
                 previousRobotState = currentRobotState;
+                Serial.print("p");
+                Serial.println(coordinateIndex);
                 currentRobotState = RESET;
+                coordinateIndex = 0;
                 break;
             }
 
@@ -192,9 +194,9 @@ void loop() {
             }
 
             if (counterY < goalY) {
-                directionY = -1;
-            } else if (counterY > goalY) {
                 directionY = 1;
+            } else if (counterY > goalY) {
+                directionY = -1;
             } else {
                 directionY = 0;
             }
@@ -221,12 +223,12 @@ void loop() {
 
                 // if joystick is pointed up motorA goes up
                 if (joystickY < 200 && !SwitchYup) {
-                    directionY = -1;
+                    directionY = 1;
 
                 }
                 // if joystick is pointed down motorA goes down
                 else if (joystickY > 700 && !SwitchDown) {
-                    directionY = 1;
+                    directionY = -1;
                 } else {
                     // if joystick is untouched motor A stops moving
                     directionY = 0;
@@ -271,7 +273,7 @@ void loop() {
                     counterStart = counterY;
                     a++;
                 }
-                directionY = -1;
+                directionY = 1;
                 directionX = 0;
                 if (counterY - counterStart > pickupDistance) {
                     directionY = 0;
@@ -359,11 +361,11 @@ void setMotorA(int dir) {
 // functions the same as setMotorA but for motorB
 // motorB is for horizontal movement
 void setMotorB(int dir) {
-    if (dir == 1) {
+    if (dir == -1) {
         digitalWrite(directionPinB, HIGH);
         digitalWrite(brakePinB, LOW);
         analogWrite(speedPinB, speed);
-    } else if (dir == -1) {
+    } else if (dir == 1) {
         digitalWrite(directionPinB, LOW);
         digitalWrite(brakePinB, LOW);
         analogWrite(speedPinB, speed);
@@ -379,7 +381,7 @@ void readEncoderA() {
     encoderAState = digitalRead(encoderA);
 
     if (encoderAState != aLastState) {
-        counterY -= directionY;
+        counterY += directionY;
     }
     aLastState = encoderAState;
 }
@@ -434,9 +436,9 @@ void readSerial() {
 
 void moveToOrigin() {
     if (counterY > 0) {
-        directionY = 1;
-    } else if (counterY < 0) {
         directionY = -1;
+    } else if (counterY < 0) {
+        directionY = 1;
     } else {
         directionY = 0;
     }
