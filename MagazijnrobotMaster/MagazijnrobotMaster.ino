@@ -189,6 +189,21 @@ void loop() {
                 // z
             }
 
+            if (counterY < goalY) {
+                directionY = -1;
+            } else if (counterY > goalY) {
+                directionY = 1;
+            } else {
+                directionY = 0;
+            }
+
+            if (counterX == goalX && counterY == goalY) {
+                a = 0;
+                coordinateIndex++;
+                previousRobotState = currentRobotState;
+                currentRobotState = PICKUP;
+            }
+
             break;
         }
         case JOYSTICK: {
@@ -282,14 +297,6 @@ void loop() {
 
             break;
         }
-
-            if (counterY < goalY) {
-                directionY = -1;
-            } else if (counterY > goalY) {
-                directionY = 1;
-            } else {
-                directionY = 0;
-            }
     }
 }
 
