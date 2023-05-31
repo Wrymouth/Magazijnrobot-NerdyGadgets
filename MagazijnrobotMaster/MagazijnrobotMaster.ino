@@ -79,6 +79,7 @@ enum SlaveSignals {
     SLAVE_INITIAL,
     SLAVE_AT_END,
     SLAVE_AT_START,
+    SLAVE_EMERGENCY,
 };
 
 MasterSignals masterSignal = MASTER_INITIAL;
@@ -133,6 +134,7 @@ void setup() {
 }
 
 void loop() {
+    Emergency();
     // print data to Serial Monitor on Arduino IDE
     if (emergency) {
         currentRobotState = EMERGENCY;
@@ -396,13 +398,15 @@ void readEncoderB() {
 }
 
 void readSerial() {
+  // Serial.println("Serial");
     if (Serial.available() > 0) {
         currentRobotState = AUTOMATIC;
         String instructions =
             Serial.readStringUntil('\n');  // reads input from HMI
 
-        if (instructions.charAt(0) == 'E') {  // Check for emergency signal
+        if(instructions.charAt(0) == 'E') {  // Check for emergency signal
             emergency = !emergency;
+            Serial.println(emergency);
             return;
         }
 
@@ -452,6 +456,16 @@ void moveToOrigin() {
     }
 }
 
+
+void Emergency() {
+  Serial.println(SLAVE_EMERGENCY);
+  if(slaveSignal == SLAVE_EMERGENCY) {
+    emergency = !emergency;
+    Serial.println(emergency);
+    return;
+  }
+}
+
 void switchY1() {
     limitSwitch1.loop();
 
@@ -498,3 +512,4 @@ void switchX2() {
         SwitchYup = true;
     }
 }
+
