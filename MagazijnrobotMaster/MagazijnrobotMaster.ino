@@ -53,12 +53,12 @@ int directionX = 0;
 int counterStart;
 int encoderAState;
 int aLastState;
-int counterY = 0;
+volatile int counterY = 0;
 
 // variables for reading encoderB
 int encoderBState;
 int bLastState;
-int counterX = 0;
+volatile int counterX = 0;
 
 // for connection between arduinos
 bool x = true;
