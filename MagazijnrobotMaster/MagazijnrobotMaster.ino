@@ -43,7 +43,7 @@ unsigned long debounceDuration = 50;  // millis
 unsigned long lastTimeButtonStateChanged = 0;
 
 // int pos = 0;
-const int speed = 220;
+const int speed = 150;
 
 // change value based on joystick or HMI input
 int directionY = 0;
@@ -236,11 +236,11 @@ void loop() {
 
                 // if joystick is pointed left motorB goes left
                 if (joystickX < 200 && !SwitchLeft) {
-                    directionX = -1;
+                    directionX = 1;
                 }
                 // if joystick is pointed right motorB goes right
                 else if (joystickX > 700 && !SwitchRight) {
-                    directionX = 1;
+                    directionX = -1;
                 }
                 // if joystick is untouched motor B stops moving
                 else {
@@ -344,14 +344,14 @@ void wireSendSignal() {
 // direction, also disables brake if direction unless no direction is given
 // motorA is for vertical movement
 void setMotorA(int dir) {
-    if (dir == 1) {
+    if (dir == -1) {
         digitalWrite(directionPinA, HIGH);
         digitalWrite(brakePinA, LOW);
-        analogWrite(speedPinA, 120);
-    } else if (dir == -1) {
+        analogWrite(speedPinA, 50);
+    } else if (dir == 1) {
         digitalWrite(directionPinA, LOW);
         digitalWrite(brakePinA, LOW);
-        analogWrite(speedPinA, speed);
+        analogWrite(speedPinA, 150);
     } else {
         digitalWrite(brakePinA, HIGH);
         analogWrite(speedPinA, 0);
@@ -364,11 +364,11 @@ void setMotorB(int dir) {
     if (dir == -1) {
         digitalWrite(directionPinB, HIGH);
         digitalWrite(brakePinB, LOW);
-        analogWrite(speedPinB, speed);
+        analogWrite(speedPinB, 125);
     } else if (dir == 1) {
         digitalWrite(directionPinB, LOW);
         digitalWrite(brakePinB, LOW);
-        analogWrite(speedPinB, speed);
+        analogWrite(speedPinB, 125);
     } else {
         digitalWrite(brakePinB, HIGH);
         analogWrite(speedPinB, 0);
@@ -458,10 +458,10 @@ void moveToOrigin() {
 
 
 void Emergency() {
-  Serial.println(SLAVE_EMERGENCY);
+  // Serial.println(SLAVE_EMERGENCY);
   if(slaveSignal == SLAVE_EMERGENCY) {
     emergency = !emergency;
-    Serial.println(emergency);
+    // Serial.println(emergency);
     return;
   }
 }
