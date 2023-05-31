@@ -11,9 +11,19 @@
 #define SwPin 4
 #include <PinChangeInterrupt.h>
 #include <Wire.h>
+#include <ezButton.h>
+// pins for limitswitches on X and Y axis
+ezButton limitSwitch1(10);  // create ezButton object that attach to pin 10;
+ezButton limitSwitch2(7);   // create ezButton object that attach to pin 7;
+ezButton limitSwitch3(6);   // create ezButton object that attach to pin 6;
 
 // bool that changes to true when emergency button is pressed
 bool emergency = false;
+// bools to check for limitswitches direction
+bool SwitchYup = false;
+bool SwitchDown = false;
+bool SwitchRight = false;
+bool SwitchLeft = false;
 
 // distance motor y needs to move up to pickup an item
 const int pickupDistance = 200;
@@ -43,12 +53,12 @@ int directionX = 0;
 int counterStart;
 int encoderAState;
 int aLastState;
-int counterY = 0;
+volatile int counterY = 0;
 
 // variables for reading encoderB
 int encoderBState;
 int bLastState;
-int counterX = 0;
+volatile int counterX = 0;
 
 // for connection between arduinos
 bool x = true;
@@ -81,7 +91,7 @@ String coordinates[3];
 // used to get startposition of y motor during item pickup
 int a = 0;
 
-enum RobotState { AUTOMATIC, JOYSTICK, RESET, PICKUP, EMERGENCY };
+enum RobotState { AUTOMATIC, JOYSTICK, RESET, PICKUP, EMERGENCY, SWITCHY };
 
 RobotState currentRobotState = JOYSTICK;
 RobotState previousRobotState = JOYSTICK;
@@ -91,6 +101,11 @@ bool pickupReset = false;
 void setup() {
     // starts serial communication
     Serial.begin(9600);
+
+    // set debounce time to 50 milliseconds
+    limitSwitch1.setDebounceTime(50);
+    limitSwitch2.setDebounceTime(50);
+    limitSwitch3.setDebounceTime(50);
 
     // writes PWM frequency to be used by motors
     TCCR2B = TCCR2B & B11111000 | B00000111;  // for PWM frequency of 30.64 Hz
@@ -120,25 +135,21 @@ void setup() {
 
 void loop() {
     Emergency();
-    if (emergency) {
-        currentRobotState = EMERGENCY;  // Change case to emergency
-    }
-    // read joystick input
-    // if joystick pressed up, call: setMotorA(directionY); directionY being 1
-    // for up, setMotorB(directionX); directionX being 0 for standing still.
-    // etc.
     // print data to Serial Monitor on Arduino IDE
-
-    // readButton();
+    if (emergency) {
+        currentRobotState = EMERGENCY;
+    }
     setMotorA(directionY);
     setMotorB(directionX);
-    // joystickX = analogRead(VrxPin);
-    // joystickY = analogRead(VryPin);
 
     readEncoderA();
     readEncoderB();
 
     readSerial();
+
+    switchY1();
+    switchY2();
+    switchX2();
 
     if (millis() - previousPrintTime >= printInterval) {
         previousPrintTime = millis();
@@ -150,12 +161,14 @@ void loop() {
     switch (currentRobotState) {
         case AUTOMATIC: {
             // all functions for automatic
+
             if (coordinateIndex > 2 || coordinates[coordinateIndex] == "") {
                 coordinateIndex = 0;
                 previousRobotState = currentRobotState;
                 currentRobotState = RESET;
                 break;
             }
+
             int commaIndex = coordinates[coordinateIndex].indexOf(',');
             String xCoordinate =
                 coordinates[coordinateIndex].substring(0, commaIndex);
@@ -171,6 +184,11 @@ void loop() {
                 directionX = -1;
             } else {
                 directionX = 0;
+                // if recieved data in variable y is true, determines start
+                // position of motor y and moves motor y up until pickupDistance
+                // is achieved. then motor stops and sends for the other arduino
+                // to begin retracting motor
+                // z
             }
 
             if (counterY < goalY) {
@@ -187,62 +205,54 @@ void loop() {
                 previousRobotState = currentRobotState;
                 currentRobotState = PICKUP;
             }
+
             break;
         }
-
         case JOYSTICK: {
             if (emergency) {
                 currentRobotState = EMERGENCY;
                 break;
             }
+
             if (readJoystick) {
                 readButton();
-                joystickX = analogRead(VrxPin);
-                joystickY = analogRead(VryPin);
-                // if joystick is untouched motorA + B stop moving
-                if (joystickX == 510) {
-                    directionX = 0;
-                }
-                if (joystickY == 520) {
-                    directionY = 0;
-                }
-                // Serial.println("STOP");
-                // if joystick is pointed left motorA goes left
-                if (joystickX < 200) {
-                    // Serial.println("Left");
+                joystickY = analogRead(VrxPin);
+                joystickX = analogRead(VryPin);
+
+                // if joystick is pointed up motorA goes up
+                if (joystickY < 200 && !SwitchYup) {
                     directionY = -1;
 
                 }
-                // if joystick is pointed right motorA goes right
-                else if (joystickX > 700) {
-                    // Serial.println("Right");
+                // if joystick is pointed down motorA goes down
+                else if (joystickY > 700 && !SwitchDown) {
                     directionY = 1;
-                }
-                // if joystick is pointed down motorB goes down
-                if (joystickY < 200) {
-                    // Serial.println("Down");
-                    directionX = -1;
-                }
-                // if joystick is pointed up motorB goes up
-                else if (joystickY > 700) {
-                    // Serial.println("Up");
-                    directionX = 1;
+                } else {
+                    // if joystick is untouched motor A stops moving
+                    directionY = 0;
                 }
 
+                // if joystick is pointed left motorB goes left
+                if (joystickX < 200 && !SwitchLeft) {
+                    directionX = -1;
+                }
+                // if joystick is pointed right motorB goes right
+                else if (joystickX > 700 && !SwitchRight) {
+                    directionX = 1;
+                }
+                // if joystick is untouched motor B stops moving
+                else {
+                    directionX = 0;
+                }
                 // if recieved data in variable y is true, determines start
                 // position of motor y and moves motor y up until pickupDistance
                 // is achieved. then motor stops and sends for the other arduino
                 // to begin retracting motor
                 // z
             }
-
             break;
         }
         case RESET: {
-            if (emergency) {
-                currentRobotState = EMERGENCY;
-                break;
-            }
             if (slaveSignal == SLAVE_INITIAL &&
                 masterSignal == MASTER_INITIAL) {
                 moveToOrigin();
@@ -250,10 +260,6 @@ void loop() {
             break;
         }
         case PICKUP: {
-            if (emergency) {
-                currentRobotState = EMERGENCY;
-                break;
-            }
             if (masterSignal == MASTER_INITIAL &&
                 slaveSignal == SLAVE_INITIAL) {
                 masterSignal = MASTER_JOYSTICK_PRESSED;
@@ -293,13 +299,8 @@ void loop() {
 
             break;
         }
-
         default: {
-            // functions default
-
             Serial.println("default");
-
-            break;
         }
     }
 }
@@ -455,6 +456,7 @@ void moveToOrigin() {
     }
 }
 
+
 void Emergency() {
   Serial.println(SLAVE_EMERGENCY);
   if(slaveSignal == SLAVE_EMERGENCY) {
@@ -463,3 +465,51 @@ void Emergency() {
     return;
   }
 }
+
+void switchY1() {
+    limitSwitch1.loop();
+
+    // //Get state of limit switch on X-axis and do something
+    int stateY1 = limitSwitch1.getState();
+    if (stateY1 == LOW) {
+        // Serial.println("unactivated");
+        SwitchDown = false;
+
+    } else {
+        counterY = 0;
+        SwitchDown = true;
+        // Serial.println("activated.");
+    }
+}
+
+void switchY2() {
+    limitSwitch2.loop();
+
+    // //Get state of limit switch on X-axis and do something
+    int stateY2 = limitSwitch2.getState();
+    if (stateY2 == LOW) {
+        // Serial.println("unactivated");
+        SwitchRight = false;
+
+    } else {
+        // Serial.println("activated.");
+        counterX = 0;
+        SwitchRight = true;
+    }
+}
+
+void switchX2() {
+    limitSwitch1.loop();
+
+    // //Get state of limit switch on X-axis and do something
+    int stateX2 = limitSwitch3.getState();
+    if (stateX2 == LOW) {
+        // Serial.println("unactivated");
+        SwitchYup = false;
+
+    } else {
+        // Serial.println("The limit switch on X-Axis is: UNTOUCHED");
+        SwitchYup = true;
+    }
+}
+

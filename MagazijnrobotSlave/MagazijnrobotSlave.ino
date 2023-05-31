@@ -15,7 +15,6 @@ bool y = true;
 //pins for limit switch and emergency button
 ezButton limitSwitch4(4);
 bool SwitchLeft = false;
-
 ezButton emergencyBtn(2);
 
 enum MasterSignals {
@@ -54,6 +53,8 @@ void setup() {
     pinMode(brakePin, OUTPUT);
     pinMode(speedPin, OUTPUT);
 
+    limitSwitch4.setDebounceTime(50);
+
     // Starts connection to other arduino and recieves data on address 9
     Wire.begin(9);
     // Attach a function to trigger when something is received.
@@ -89,6 +90,7 @@ void readEncoder() {
 void loop() {
     Serial.println(slaveSignal);
     // put your main code here, to run repeatedly:
+    switchX1();
     readEncoder();
 
     emergencyBtn.loop();
@@ -145,6 +147,29 @@ void loop() {
         slaveSignal = SLAVE_INITIAL;
         masterSignal = MASTER_INITIAL;
     }
+
+}
+
+void switchX1() {
+  
+limitSwitch4.loop();
+
+
+  // //Get state of limit switch on X-axis and do something
+  int stateX1 = limitSwitch4.getState();
+  if (stateX1 == LOW) {
+    //Serial.println("unactivated");
+    SwitchLeft = false;
+
+
+  } else {
+    Wire.beginTransmission(8);  // transmit to device #9
+    SwitchLeft = true;
+    Wire.write(SwitchLeft);           // sends true
+    Wire.endTransmission();     // stop transmitting
+    //Serial.println("activated.");
+  }
+  
 }
 
 void switchX1() {
