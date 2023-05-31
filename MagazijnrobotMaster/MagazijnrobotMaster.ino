@@ -191,6 +191,50 @@ void loop() {
 
             break;
         }
+        case JOYSTICK: {
+            if (emergency) {
+                currentRobotState = EMERGENCY;
+                break;
+            }
+
+            if (readJoystick) {
+                readButton();
+                joystickY = analogRead(VrxPin);
+                joystickX = analogRead(VryPin);
+
+                // if joystick is pointed up motorA goes up
+                if (joystickY < 200 && !SwitchYup) {
+                    directionY = -1;
+
+                }
+                // if joystick is pointed down motorA goes down
+                else if (joystickY > 700 && !SwitchDown) {
+                    directionY = 1;
+                } else {
+                    // if joystick is untouched motor A stops moving
+                    directionY = 0;
+                }
+
+                // if joystick is pointed left motorB goes left
+                if (joystickX < 200 && !SwitchLeft) {
+                    directionX = -1;
+                }
+                // if joystick is pointed right motorB goes right
+                else if (joystickX > 700 && !SwitchRight) {
+                    directionX = 1;
+                }
+                // if joystick is untouched motor B stops moving
+                else {
+                    directionX = 0;
+                }
+                // if recieved data in variable y is true, determines start
+                // position of motor y and moves motor y up until pickupDistance
+                // is achieved. then motor stops and sends for the other arduino
+                // to begin retracting motor
+                // z
+            }
+            break;
+        }
         case RESET: {
             if (slaveSignal == SLAVE_INITIAL &&
                 masterSignal == MASTER_INITIAL) {
