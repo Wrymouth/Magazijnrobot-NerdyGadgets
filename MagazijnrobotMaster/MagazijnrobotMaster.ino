@@ -475,11 +475,12 @@ void switchY2() {
     int stateY2 = limitSwitch2.getState();
     if (stateY2 == LOW) {
         // Serial.println("unactivated");
-        SwitchYup = false;
+        SwitchRight = false;
 
     } else {
-        SwitchYup = true;
         // Serial.println("activated.");
+        counterX = 0;
+        SwitchRight = true;
     }
 }
 
@@ -489,13 +490,11 @@ void switchX2() {
     // //Get state of limit switch on X-axis and do something
     int stateX2 = limitSwitch3.getState();
     if (stateX2 == LOW) {
-        Serial.println("unactivated");
-        SwitchRight = false;
+        // Serial.println("unactivated");
+        SwitchYup = false;
 
     } else {
         // Serial.println("The limit switch on X-Axis is: UNTOUCHED");
-        counterX = 0;
-        SwitchRight = true;
-        Serial.println("activated.");
+        SwitchYup = true;
     }
 }
