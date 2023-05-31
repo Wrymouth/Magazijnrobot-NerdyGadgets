@@ -292,8 +292,6 @@ void loop() {
         }
         case EMERGENCY: {
             // Emergency functionality
-            Serial.println("Emergency Pressed");
-
             directionY = 0;
             directionX = 0;
 
