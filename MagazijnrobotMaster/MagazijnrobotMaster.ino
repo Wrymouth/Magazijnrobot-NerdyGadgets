@@ -113,12 +113,12 @@ void setup() {
     // Setup Motor A vertical
     pinMode(directionPinA, OUTPUT);
     pinMode(brakePinA, OUTPUT);
-    pinMode(encoderA, INPUT);
+    pinMode(encoderA, INPUT_PULLUP);
 
     // Setup Motor B horizontal
     pinMode(directionPinB, OUTPUT);
     pinMode(brakePinB, OUTPUT);
-    pinMode(encoderB, INPUT);
+    pinMode(encoderB, INPUT_PULLUP);
     // Setup for button
     pinMode(SwPin, INPUT);
     digitalWrite(SwPin, HIGH);
@@ -137,6 +137,7 @@ void loop() {
     Emergency();
     // print data to Serial Monitor on Arduino IDE
     if (emergency) {
+        previousRobotState = currentRobotState;
         currentRobotState = EMERGENCY;
     }
     setMotorA(directionY);
@@ -297,6 +298,10 @@ void loop() {
             directionY = 0;
             directionX = 0;
 
+            if(!emergency) {
+              currentRobotState = previousRobotState;
+            }            
+
             break;
         }
         default: {
@@ -347,11 +352,11 @@ void setMotorA(int dir) {
     if (dir == -1) {
         digitalWrite(directionPinA, HIGH);
         digitalWrite(brakePinA, LOW);
-        analogWrite(speedPinA, 50);
+        analogWrite(speedPinA, 80);
     } else if (dir == 1) {
         digitalWrite(directionPinA, LOW);
         digitalWrite(brakePinA, LOW);
-        analogWrite(speedPinA, 150);
+        analogWrite(speedPinA, 180);
     } else {
         digitalWrite(brakePinA, HIGH);
         analogWrite(speedPinA, 0);
@@ -364,11 +369,11 @@ void setMotorB(int dir) {
     if (dir == -1) {
         digitalWrite(directionPinB, HIGH);
         digitalWrite(brakePinB, LOW);
-        analogWrite(speedPinB, 125);
+        analogWrite(speedPinB, 100);
     } else if (dir == 1) {
         digitalWrite(directionPinB, LOW);
         digitalWrite(brakePinB, LOW);
-        analogWrite(speedPinB, 125);
+        analogWrite(speedPinB, 100);
     } else {
         digitalWrite(brakePinB, HIGH);
         analogWrite(speedPinB, 0);
@@ -461,7 +466,7 @@ void Emergency() {
   // Serial.println(SLAVE_EMERGENCY);
   if(slaveSignal == SLAVE_EMERGENCY) {
     emergency = !emergency;
-    // Serial.println(emergency);
+    slaveSignal = SLAVE_INITIAL;
     return;
   }
 }

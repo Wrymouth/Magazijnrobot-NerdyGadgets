@@ -101,7 +101,8 @@ void loop() {
       slaveSignal = SLAVE_EMERGENCY;
       Wire.beginTransmission(8);
       Wire.write(slaveSignal);
-      Wire.endTransmission();      
+      Wire.endTransmission();   
+      slaveSignal = SLAVE_INITIAL;   
     }
 
     // moves z motor forward if joystick button is pressed
@@ -170,25 +171,4 @@ limitSwitch4.loop();
     //Serial.println("activated.");
   }
   
-}
-
-void switchX1() {
-  
-limitSwitch4.loop();
-
-
-  // //Get state of limit switch on X-axis and do something
-  int stateX1 = limitSwitch4.getState();
-  if (stateX1 == LOW) {
-    //Serial.println("unactivated");
-    SwitchLeft = false;
-
-
-  } else {
-    Wire.beginTransmission(8);  // transmit to device #9
-    SwitchLeft = true;
-    Wire.write(SwitchLeft);           // sends true
-    Wire.endTransmission();     // stop transmitting
-    //Serial.println("activated.");
-  }
 }
