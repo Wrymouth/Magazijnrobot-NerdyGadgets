@@ -3,18 +3,13 @@
 #define brakePin 8
 #define encoder 5
 #include <Wire.h>
-#include <ezButton.h>
 
 // the end position of the motor on the z axes
-const int end = 1700;
+const int end = 100;
 
 // used for communication between arduinos
 bool x = false;
 bool y = true;
-
-//pins for limit switch and emergency button
-ezButton limitswitch4(4);
-bool SwitchLeft = false;
 
 enum MasterSignals {
     MASTER_INITIAL,
@@ -51,8 +46,6 @@ void setup() {
     pinMode(brakePin, OUTPUT);
     pinMode(speedPin, OUTPUT);
 
-    limitswitch4.setDebounceTime(50);
-
     // Starts connection to other arduino and recieves data on address 9
     Wire.begin(9);
     // Attach a function to trigger when something is received.
@@ -60,7 +53,7 @@ void setup() {
 
     // interrupts evrytime encoder A/B pulses and executes readEncoder functions
     // accordingly. this makes sure no pulse is missed
-    attachInterrupt(digitalPinToInterrupt(encoder), readEncoder, RISING);
+    attachInterrupt(digitalPinToInterrupt(encoder), readEncoder, CHANGE);
 }
 
 void receiveEvent(int bytes) {
@@ -74,9 +67,9 @@ void readEncoder() {
 
     if (encoderState != LastState) {
         if (direction == 1) {
-            counter++;
-        } else if (direction == -1) {
             counter--;
+        } else if (direction == -1) {
+            counter++;
         }
     }
     LastState = encoderState;
@@ -85,18 +78,17 @@ void readEncoder() {
 
 void loop() {
     // put your main code here, to run repeatedly:
-    switchX1();
     readEncoder();
     // moves z motor forward if joystick button is pressed
     if (masterSignal == MASTER_JOYSTICK_PRESSED && slaveSignal == SLAVE_INITIAL) {
-        direction = 1;
+        direction = -1;
         digitalWrite(brakePin, LOW);
         digitalWrite(directionPin, LOW);
         analogWrite(speedPin, speed);
 
         // if end is reached stop motor and send for the other arduino to move
         // up a bit
-        if (counter >= end) {
+        if (counter == end) {
             direction = 0;
             digitalWrite(brakePin, HIGH);
             analogWrite(speedPin, 0);
@@ -110,7 +102,8 @@ void loop() {
     // if y axes has stopped moving to pickup an item, move motor backwards
     // until z motor is back at starting position
     if (masterSignal == MASTER_MOVE_FINISHED) {
-        if (counter <= 0) {
+  
+        if (counter == 0) {
             direction = 0;
             digitalWrite(brakePin, HIGH);
             analogWrite(speedPin, 0);
@@ -119,7 +112,7 @@ void loop() {
             Wire.write(slaveSignal);           // sends false
             Wire.endTransmission();     // stop transmitting
         } else {
-            direction = -1;
+            direction = 1;
             digitalWrite(brakePin, LOW);
             digitalWrite(directionPin, HIGH);
             analogWrite(speedPin, speed);
@@ -129,26 +122,4 @@ void loop() {
         slaveSignal = SLAVE_INITIAL;
         masterSignal = MASTER_INITIAL;
     }
-
-}
-
-void switchX1() {
-  limitSwitch1.loop();
-
-
-  // //Get state of limit switch on X-axis and do something
-  int stateX1 = limitSwitch4.getState();
-  if (stateX1 == LOW) {
-    //Serial.println("unactivated");
-    SwitchLeft = false;
-
-
-  } else {
-    Wire.beginTransmission(8);  // transmit to device #9
-    SwitchLeft = true;
-    Wire.write(SwitchLeft);           // sends true
-    Wire.endTransmission();     // stop transmitting
-    //Serial.println("activated.");
-  }
-  
 }
