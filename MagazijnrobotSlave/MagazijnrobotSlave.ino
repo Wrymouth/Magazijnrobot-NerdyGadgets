@@ -1,7 +1,8 @@
 #define speedPin 11
 #define directionPin 13
 #define brakePin 8
-#define encoder 5
+#define encoder 2
+
 #include <Wire.h>
 
 // the end position of the motor on the z axes
@@ -45,6 +46,7 @@ void setup() {
     pinMode(directionPin, OUTPUT);
     pinMode(brakePin, OUTPUT);
     pinMode(speedPin, OUTPUT);
+    pinMode(encoder, INPUT_PULLUP);
 
     // Starts connection to other arduino and recieves data on address 9
     Wire.begin(9);
